@@ -1,0 +1,170 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* BTP Manager — Slate & Steel design system. All colors in HSL. */
+
+@layer base {
+  :root {
+    /* Slate & Steel palette */
+    --background: 210 20% 98%;
+    --foreground: 215 28% 17%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 28% 17%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 28% 17%;
+
+    /* Deep slate as primary brand */
+    --primary: 215 28% 22%;
+    --primary-foreground: 210 20% 98%;
+    --primary-glow: 215 25% 35%;
+
+    --secondary: 215 16% 93%;
+    --secondary-foreground: 215 28% 22%;
+
+    --muted: 214 20% 95%;
+    --muted-foreground: 215 14% 45%;
+
+    /* Steel blue accent (BTP-friendly, professional) */
+    --accent: 210 60% 45%;
+    --accent-foreground: 0 0% 100%;
+    --accent-soft: 210 60% 95%;
+
+    --destructive: 0 75% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 145 60% 38%;
+    --success-foreground: 0 0% 100%;
+    --success-soft: 145 50% 94%;
+
+    --warning: 35 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --warning-soft: 38 92% 95%;
+
+    --info: 200 80% 45%;
+    --info-foreground: 0 0% 100%;
+    --info-soft: 200 70% 95%;
+
+    --border: 214 18% 88%;
+    --input: 214 18% 88%;
+    --ring: 215 28% 22%;
+
+    --radius: 0.625rem;
+
+    /* Sidebar */
+    --sidebar-background: 215 30% 14%;
+    --sidebar-foreground: 214 20% 78%;
+    --sidebar-primary: 210 60% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 25% 20%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 215 25% 22%;
+    --sidebar-ring: 210 60% 55%;
+
+    /* Gradients & shadows */
+    --gradient-primary: linear-gradient(135deg, hsl(215 30% 18%), hsl(215 25% 28%));
+    --gradient-accent: linear-gradient(135deg, hsl(210 60% 45%), hsl(200 75% 50%));
+    --gradient-subtle: linear-gradient(180deg, hsl(210 20% 98%), hsl(214 18% 95%));
+
+    --shadow-sm: 0 1px 2px 0 hsl(215 28% 17% / 0.04);
+    --shadow-md: 0 4px 12px -2px hsl(215 28% 17% / 0.08);
+    --shadow-lg: 0 12px 32px -8px hsl(215 28% 17% / 0.14);
+    --shadow-glow: 0 0 0 1px hsl(210 60% 45% / 0.15), 0 8px 24px -4px hsl(210 60% 45% / 0.25);
+
+    --transition-base: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    --background: 215 30% 9%;
+    --foreground: 210 20% 96%;
+
+    --card: 215 28% 12%;
+    --card-foreground: 210 20% 96%;
+
+    --popover: 215 28% 12%;
+    --popover-foreground: 210 20% 96%;
+
+    --primary: 210 60% 55%;
+    --primary-foreground: 215 30% 9%;
+    --primary-glow: 210 70% 65%;
+
+    --secondary: 215 25% 18%;
+    --secondary-foreground: 210 20% 96%;
+
+    --muted: 215 25% 16%;
+    --muted-foreground: 215 14% 65%;
+
+    --accent: 210 70% 55%;
+    --accent-foreground: 0 0% 100%;
+    --accent-soft: 210 50% 18%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 145 55% 50%;
+    --success-foreground: 0 0% 100%;
+    --success-soft: 145 40% 18%;
+
+    --warning: 35 90% 55%;
+    --warning-foreground: 0 0% 100%;
+    --warning-soft: 35 50% 18%;
+
+    --info: 200 80% 55%;
+    --info-foreground: 0 0% 100%;
+    --info-soft: 200 50% 18%;
+
+    --border: 215 25% 20%;
+    --input: 215 25% 20%;
+    --ring: 210 60% 55%;
+
+    --sidebar-background: 215 35% 7%;
+    --sidebar-foreground: 214 20% 78%;
+    --sidebar-primary: 210 70% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 28% 14%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 215 25% 16%;
+    --sidebar-ring: 210 70% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  /* Subtle scrollbar */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.4); }
+}
+
+@layer utilities {
+  .gradient-primary { background: var(--gradient-primary); }
+  .gradient-accent { background: var(--gradient-accent); }
+  .gradient-subtle { background: var(--gradient-subtle); }
+  .shadow-elegant { box-shadow: var(--shadow-md); }
+  .shadow-elevated { box-shadow: var(--shadow-lg); }
+  .shadow-glow { box-shadow: var(--shadow-glow); }
+  .transition-base { transition: var(--transition-base); }
+}
