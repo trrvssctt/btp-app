@@ -75,7 +75,6 @@ export function NewArticleDialog({ trigger, onSuccess }: { trigger?: React.React
               <Select value={familleId} onValueChange={setFamilleId}>
                 <SelectTrigger><SelectValue placeholder="Choisir…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">— Aucune —</SelectItem>
                   {familles.map((f) => <SelectItem key={f.id} value={f.id}>{f.libelle}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -91,7 +90,6 @@ export function NewArticleDialog({ trigger, onSuccess }: { trigger?: React.React
               <Select value={uniteId} onValueChange={setUniteId}>
                 <SelectTrigger><SelectValue placeholder="…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">— Aucune —</SelectItem>
                   {unites.map((u) => <SelectItem key={u.id} value={u.id}>{u.libelle}</SelectItem>)}
                 </SelectContent>
               </Select>

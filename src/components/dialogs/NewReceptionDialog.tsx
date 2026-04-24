@@ -73,7 +73,6 @@ export function NewReceptionDialog({ trigger, onSuccess }: { trigger?: React.Rea
               <Select value={commandeId} onValueChange={setCommandeId}>
                 <SelectTrigger><SelectValue placeholder="Sélectionner (optionnel)…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">— Sans commande —</SelectItem>
                   {commandes.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.numero} — {c.supplier_nom}</SelectItem>
                   ))}
