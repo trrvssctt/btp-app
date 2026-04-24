@@ -183,7 +183,6 @@ export function NewDemandeDialog({ trigger, onSuccess }: { trigger?: React.React
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>Annuler</Button>
-          <Button variant="outline" onClick={() => submit(true)} disabled={saving}>Enregistrer brouillon</Button>
           <Button onClick={() => submit(false)} disabled={saving}>
             {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
             Soumettre la demande
