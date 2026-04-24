@@ -5,6 +5,6 @@ const { authenticate, requireRole } = require('../middleware/auth');
 router.use(authenticate);
 
 router.get('/', ctrl.list);
-router.post('/', requireRole('ADMIN', 'MAGASINIER', 'RESPONSABLE_LOGISTIQUE'), ctrl.create);
+router.post('/', requireRole('ADMIN', 'MAGASINIER', 'ACHETEUR', 'RESP_LOGISTIQUE'), ctrl.create);
 
 module.exports = router;

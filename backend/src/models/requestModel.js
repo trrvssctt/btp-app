@@ -123,7 +123,7 @@ async function addApproval({ request_id, etape, decideur_id, decision, commentai
     let next = null;
     if (decision === 'REJETEE') next = 'REJETEE';
     else if (etape === 'TECHNIQUE' && decision === 'APPROUVEE') next = 'VALIDATION_BUDGETAIRE';
-    else if (etape === 'BUDGETAIRE' && decision === 'APPROUVEE') next = 'APPROUVEE';
+    else if (etape === 'BUDGETAIRE' && decision === 'APPROUVEE') next = 'VALIDATION_DIRECTION';
     else if (etape === 'DIRECTION' && decision === 'APPROUVEE') next = 'APPROUVEE';
     if (next) {
       await c.query(`UPDATE requests SET statut = $2, updated_at = now() WHERE id = $1`, [request_id, next]);
@@ -183,7 +183,7 @@ async function addApproval({ request_id, etape, decideur_id, decision, commentai
 async function requestComplement(id, commentaire) {
   const { rows } = await query(
     `UPDATE requests SET statut = 'EN_COMPLEMENT', updated_at = now() WHERE id = $1
-     AND statut IN ('VALIDATION_TECHNIQUE','VALIDATION_BUDGETAIRE') RETURNING *`,
+     AND statut IN ('VALIDATION_TECHNIQUE','VALIDATION_BUDGETAIRE','VALIDATION_DIRECTION') RETURNING *`,
     [id],
   );
   return rows[0] || null;
