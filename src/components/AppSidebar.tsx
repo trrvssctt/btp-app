@@ -10,13 +10,18 @@ import {
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 
 type NavItem = { title: string; url: string; icon: any; end?: boolean; badge?: number; roles?: string[] };
 
 const operations: NavItem[] = [
   { title: "Tableau de bord", url: "/", icon: LayoutDashboard, end: true },
-  { title: "Demandes", url: "/demandes", icon: FileText, badge: 4 },
+  { title: "Demandes", url: "/demandes", icon: FileText },
   { title: "Stock", url: "/stock", icon: Package, roles: ["MAGASINIER", "CONDUCTEUR", "CHEF_PROJET", "RESP_TECHNIQUE", "RESP_LOGISTIQUE"] },
   { title: "Mouvements", url: "/mouvements", icon: Truck, roles: ["MAGASINIER", "RESP_LOGISTIQUE"] },
   { title: "Transferts", url: "/transferts", icon: ArrowLeftRight, roles: ["MAGASINIER", "RESP_LOGISTIQUE"] },
@@ -28,14 +33,14 @@ const supply: NavItem[] = [
 ];
 
 const referentiels: NavItem[] = [
-  { title: "Projets & chantiers", url: "/projets", icon: HardHat, roles: ["CHEF_PROJET", "CONDUCTEUR"] },
+  { title: "Projets & chantiers", url: "/projets", icon: HardHat, roles: ["CHEF_PROJET", "CONDUCTEUR", "DG", "DAF", "CONTROLEUR"] },
   { title: "Articles", url: "/articles", icon: Warehouse, roles: ["MAGASINIER", "ACHETEUR"] },
   { title: "Équipements", url: "/equipements", icon: Wrench, roles: ["CHEF_PROJET", "CONDUCTEUR", "MAGASINIER", "RESP_LOGISTIQUE"] },
 ];
 
 const pilotage: NavItem[] = [
   { title: "Reporting", url: "/reporting", icon: BarChart3, roles: ["CHEF_PROJET", "CONTROLEUR", "DG", "DAF", "AUDITEUR"] },
-  { title: "Notifications", url: "/notifications", icon: Bell, badge: 3 },
+  { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Journal d'audit", url: "/audit", icon: ShieldCheck, roles: ["AUDITEUR", "CONTROLEUR"] },
   { title: "Paramètres", url: "/parametres", icon: Settings, roles: ["ADMIN"] },
 ];
@@ -48,7 +53,8 @@ export function AppSidebar() {
   const initials = user?.nom?.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "??";
   const primaryRole = user?.roles?.[0] || "Utilisateur";
 
-  const visible = (items: NavItem[]) => items.filter(item => !item.roles || hasRole(...item.roles));
+  const isAdmin = hasRole("ADMIN");
+  const visible = (items: NavItem[]) => items.filter(item => isAdmin || !item.roles || hasRole(...item.roles));
 
   const renderItem = (item: NavItem) => (
     <SidebarMenuItem key={item.url}>
@@ -135,17 +141,50 @@ export function AppSidebar() {
                 <span className="text-[10px] text-sidebar-foreground/50 truncate">{primaryRole}</span>
               </div>
             </div>
-            <button
-              onClick={logout}
-              className="w-full flex items-center gap-2 text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent rounded-md px-2 py-1.5 transition-base"
-            >
-              <LogOut className="w-3.5 h-3.5" /> Se déconnecter
-            </button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button className="w-full flex items-center gap-2 text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent rounded-md px-2 py-1.5 transition-base">
+                  <LogOut className="w-3.5 h-3.5" /> Se déconnecter
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmer la déconnexion</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Vous allez être déconnecté de BTP Manager. Toute session en cours sera fermée.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction onClick={logout} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Se déconnecter
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </>
         ) : (
-          <button onClick={logout} className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-semibold text-sidebar-foreground mx-auto" title="Se déconnecter">
-            <LogOut className="w-3.5 h-3.5" />
-          </button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center text-sidebar-foreground mx-auto" title="Se déconnecter">
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmer la déconnexion</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Vous allez être déconnecté de BTP Manager. Toute session en cours sera fermée.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction onClick={logout} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Se déconnecter
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </SidebarFooter>
     </Sidebar>
