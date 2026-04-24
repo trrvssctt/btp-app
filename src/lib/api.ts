@@ -169,6 +169,16 @@ export const auditApi = {
     api.get<{ data: any[] }>("/audit", { params }).then((r) => r.data.data),
 };
 
+export const budgetLotsApi = {
+  list: (params?: { project_id?: string }) =>
+    api.get<{ data: any[] }>("/budget-lots", { params }).then((r) => r.data.data),
+  create: (body: { project_id: string; code: string; libelle: string; montant_prevu: number }) =>
+    api.post<{ data: any }>("/budget-lots", body).then((r) => r.data.data),
+  update: (id: string, body: Partial<{ code: string; libelle: string; montant_prevu: number }>) =>
+    api.put<{ data: any }>(`/budget-lots/${id}`, body).then((r) => r.data.data),
+  remove: (id: string) => api.delete(`/budget-lots/${id}`),
+};
+
 export const reportingApi = {
   get: () =>
     api.get<{
