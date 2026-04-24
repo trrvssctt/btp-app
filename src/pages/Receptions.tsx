@@ -9,6 +9,7 @@ import { formatDate } from "@/data/labels";
 import { NewReceptionDialog } from "@/components/dialogs/NewReceptionDialog";
 import { useApiData } from "@/hooks/useApiData";
 import { receiptsApi } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 const MOCK_FALLBACK = receptions.map((r) => ({
   id: r.id,
@@ -21,6 +22,8 @@ const MOCK_FALLBACK = receptions.map((r) => ({
 }));
 
 export default function ReceptionsPage() {
+  const { hasRole } = useAuth();
+  const canCreate = hasRole("ADMIN", "MAGASINIER", "ACHETEUR", "RESP_LOGISTIQUE");
   const [refreshKey, setRefreshKey] = useState(0);
 
   const { data, loading, usingFallback } = useApiData<any[]>(
@@ -35,7 +38,7 @@ export default function ReceptionsPage() {
         breadcrumb="Approvisionnement"
         title="Réceptions fournisseur"
         description="Bons de réception, contrôle de conformité, écarts et reliquats."
-        actions={<NewReceptionDialog onSuccess={() => setRefreshKey((k) => k + 1)} />}
+        actions={canCreate ? <NewReceptionDialog onSuccess={() => setRefreshKey((k) => k + 1)} /> : undefined}
       />
       <OfflineBanner show={usingFallback} />
       <div className="rounded-xl bg-card border border-border shadow-sm overflow-hidden">

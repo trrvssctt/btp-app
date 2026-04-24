@@ -13,6 +13,7 @@ import { NewDemandeDialog } from "@/components/dialogs/NewDemandeDialog";
 import { useApiData } from "@/hooks/useApiData";
 import { requestsApi } from "@/lib/api";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { useAuth } from "@/contexts/AuthContext";
 
 type ApiDemande = {
   id: string;
@@ -28,6 +29,8 @@ type ApiDemande = {
 };
 
 export default function DemandesPage() {
+  const { hasPermission } = useAuth();
+  const canCreate = hasPermission("REQUEST_CREATE");
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -52,7 +55,7 @@ export default function DemandesPage() {
 
   const filtered = useMemo(() => {
     return data.filter((d) => {
-      if (filter === "attente" && !["SOUMISE", "VALIDATION_TECHNIQUE", "VALIDATION_BUDGETAIRE"].includes(d.statut)) return false;
+      if (filter === "attente" && !["SOUMISE", "VALIDATION_TECHNIQUE", "VALIDATION_BUDGETAIRE", "VALIDATION_DIRECTION"].includes(d.statut)) return false;
       if (filter === "approuvee" && !["APPROUVEE", "EN_ACHAT", "EN_PREPARATION", "MISE_A_DISPO"].includes(d.statut)) return false;
       if (filter === "cloturee" && !["CLOTUREE", "REJETEE"].includes(d.statut)) return false;
       if (search && !`${d.numero} ${d.motif ?? ""} ${d.requester_nom ?? ""}`.toLowerCase().includes(search.toLowerCase())) return false;
@@ -69,7 +72,7 @@ export default function DemandesPage() {
         actions={
           <>
             <Button variant="outline" size="sm" className="gap-1.5"><Download className="w-4 h-4" /> Exporter</Button>
-            <NewDemandeDialog onSuccess={() => setRefreshKey((k) => k + 1)} />
+            {canCreate && <NewDemandeDialog onSuccess={() => setRefreshKey((k) => k + 1)} />}
           </>
         }
       />

@@ -15,6 +15,7 @@ import { NewProjetDialog } from "@/components/dialogs/NewProjetDialog";
 import { useApiData } from "@/hooks/useApiData";
 import { projectsApi } from "@/lib/api";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { useAuth } from "@/contexts/AuthContext";
 
 type ApiProject = {
   id: string;
@@ -45,6 +46,8 @@ const statutFilterClass = (s: StatutFilter, active: boolean) => {
 
 export default function ProjetsPage() {
   const navigate = useNavigate();
+  const { hasRole } = useAuth();
+  const canCreate = hasRole("ADMIN", "CHEF_PROJET");
   const [refreshKey, setRefreshKey] = useState(0);
   const [search, setSearch] = useState("");
   const [statutFilter, setStatutFilter] = useState<StatutFilter>("Tous");
@@ -88,7 +91,7 @@ export default function ProjetsPage() {
         breadcrumb="Référentiels"
         title="Projets & chantiers"
         description="Vision opérationnelle et budgétaire de tous les projets."
-        actions={<NewProjetDialog onSuccess={() => setRefreshKey((k) => k + 1)} />}
+        actions={canCreate ? <NewProjetDialog onSuccess={() => setRefreshKey((k) => k + 1)} /> : undefined}
       />
       <OfflineBanner show={usingFallback} />
 

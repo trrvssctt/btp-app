@@ -12,11 +12,13 @@ import { requestsApi } from "@/lib/api";
 import { formatDate, formatEur, statutDemandeLabel, statutDemandeTone, urgenceTone } from "@/data/labels";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const workflow = [
   { key: "SOUMISE",               label: "Soumission",             role: "Demandeur",          etape: null },
   { key: "VALIDATION_TECHNIQUE",  label: "Validation technique",   role: "Conducteur travaux", etape: "TECHNIQUE" },
   { key: "VALIDATION_BUDGETAIRE", label: "Validation budgétaire",  role: "Contrôleur",         etape: "BUDGETAIRE" },
+  { key: "VALIDATION_DIRECTION",  label: "Validation DAF",         role: "DAF",                etape: "DIRECTION" },
   { key: "APPROUVEE",             label: "Approuvée",              role: "Système",             etape: null },
   { key: "MISE_A_DISPO",          label: "Mise à disposition",     role: "Magasinier",         etape: null },
   { key: "CLOTUREE",              label: "Clôturée",               role: "Système",             etape: null },
@@ -25,10 +27,18 @@ const workflow = [
 const etapeMap: Record<string, string> = {
   VALIDATION_TECHNIQUE:  "TECHNIQUE",
   VALIDATION_BUDGETAIRE: "BUDGETAIRE",
+  VALIDATION_DIRECTION:  "DIRECTION",
+};
+
+const etapePerm: Record<string, string> = {
+  VALIDATION_TECHNIQUE:  "REQUEST_VALIDATE_TECH",
+  VALIDATION_BUDGETAIRE: "REQUEST_VALIDATE_BUDGET",
+  VALIDATION_DIRECTION:  "REQUEST_VALIDATE_DIRECTION",
 };
 
 export default function DemandeDetail() {
   const { id } = useParams();
+  const { hasPermission, hasRole } = useAuth();
   const [d, setD] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [commentaire, setCommentaire] = useState("");
@@ -134,8 +144,12 @@ export default function DemandeDetail() {
 
   const currentStepIdx = workflow.findIndex((s) => s.key === d.statut);
   const isTerminal = ["APPROUVEE", "REJETEE", "CLOTUREE", "MISE_A_DISPO"].includes(d.statut);
-  const canValidate = ["VALIDATION_TECHNIQUE", "VALIDATION_BUDGETAIRE"].includes(d.statut);
+  const isValidableStatus = ["VALIDATION_TECHNIQUE", "VALIDATION_BUDGETAIRE", "VALIDATION_DIRECTION"].includes(d.statut);
+  const canRequestComplement = ["VALIDATION_TECHNIQUE", "VALIDATION_BUDGETAIRE"].includes(d.statut);
+  const requiredPerm = etapePerm[d.statut];
+  const canValidate = isValidableStatus && (hasRole("ADMIN") || (!!requiredPerm && hasPermission(requiredPerm)));
   const isEnComplement = d.statut === "EN_COMPLEMENT";
+  const canCreateRequest = hasPermission("REQUEST_CREATE");
 
   const getApproval = (etape: string | null) => {
     if (!etape || !d.approvals) return null;
@@ -265,15 +279,17 @@ export default function DemandeDetail() {
                   {actionLoading === "approve" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                   Approuver
                 </Button>
-                <Button
-                  variant="outline"
-                  className="gap-1.5"
-                  onClick={handleComplement}
-                  disabled={!!actionLoading}
-                >
-                  {actionLoading === "complement" ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
-                  Demander complément
-                </Button>
+                {canRequestComplement && (
+                  <Button
+                    variant="outline"
+                    className="gap-1.5"
+                    onClick={handleComplement}
+                    disabled={!!actionLoading}
+                  >
+                    {actionLoading === "complement" ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
+                    Demander complément
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   className="gap-1.5 text-destructive hover:text-destructive border-destructive/30 hover:border-destructive/60"
@@ -290,8 +306,16 @@ export default function DemandeDetail() {
             </div>
           )}
 
+          {/* Info pour valideurs : demande en attente de complément du demandeur */}
+          {isEnComplement && !canCreateRequest && (
+            <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-warning" />
+              En attente d'un complément d'information du demandeur — aucune action requise de votre part.
+            </div>
+          )}
+
           {/* Bannière "Complément requis" pour le demandeur */}
-          {isEnComplement && (
+          {isEnComplement && canCreateRequest && (
             <div className="rounded-xl border border-warning/40 bg-warning-soft p-5">
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-warning shrink-0 mt-0.5" />

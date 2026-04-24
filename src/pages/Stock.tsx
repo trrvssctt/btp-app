@@ -15,6 +15,7 @@ import { formatNum, typeDepotLabel } from "@/data/labels";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { NewMouvementDialog } from "@/components/dialogs/NewMouvementDialog";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 type SortField = "article_code" | "article_designation" | "depot_nom" | "qte_disponible" | "qte_reservee" | "seuil_alerte";
 type SortDir = "asc" | "desc";
@@ -98,6 +99,8 @@ function SortIcon({ field, sortField, sortDir }: { field: SortField; sortField: 
 }
 
 export default function StockPage() {
+  const { hasRole } = useAuth();
+  const canWrite = hasRole("ADMIN", "MAGASINIER");
   const [search, setSearch] = useState("");
   const [depot, setDepot] = useState("all");
   const [etat, setEtat] = useState<EtatFilter>("all");
@@ -190,7 +193,7 @@ export default function StockPage() {
         breadcrumb="Opérations"
         title="État du stock"
         description="Suivi multi-dépôts en temps réel — magasin central, dépôts secondaires, stocks chantier."
-        actions={<NewMouvementDialog onSuccess={loadData} />}
+        actions={canWrite ? <NewMouvementDialog onSuccess={loadData} /> : undefined}
       />
 
       {/* KPI Cards */}

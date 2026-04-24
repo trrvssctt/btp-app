@@ -9,6 +9,7 @@ import { formatDate } from "@/data/labels";
 import { NewCommandeDialog } from "@/components/dialogs/NewCommandeDialog";
 import { useApiData } from "@/hooks/useApiData";
 import { purchaseOrdersApi } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 const MOCK_FALLBACK = commandes.map((c) => ({
   id: c.id,
@@ -27,6 +28,8 @@ const formatFcfa = (n: number | string | null) =>
   n == null ? "—" : `${Number(n).toLocaleString("fr-SN")} FCFA`;
 
 export default function AchatsPage() {
+  const { hasRole } = useAuth();
+  const canCreate = hasRole("ADMIN", "RESP_LOGISTIQUE", "ACHETEUR");
   const [refreshKey, setRefreshKey] = useState(0);
 
   const { data, loading, usingFallback } = useApiData<any[]>(
@@ -41,7 +44,7 @@ export default function AchatsPage() {
         breadcrumb="Approvisionnement"
         title="Achats & commandes"
         description="Consultations fournisseurs, devis, bons de commande, suivi des livraisons et reliquats."
-        actions={<NewCommandeDialog onSuccess={() => setRefreshKey((k) => k + 1)} />}
+        actions={canCreate ? <NewCommandeDialog onSuccess={() => setRefreshKey((k) => k + 1)} /> : undefined}
       />
       <OfflineBanner show={usingFallback} />
       <div className="rounded-xl bg-card border border-border shadow-sm overflow-hidden">

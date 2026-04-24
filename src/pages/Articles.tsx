@@ -9,6 +9,7 @@ import { useApiData } from "@/hooks/useApiData";
 import { articlesApi } from "@/lib/api";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const natureTone: Record<string, "muted" | "info" | "warning" | "success" | "accent"> = {
   STOCKABLE: "info", ACHAT_DIRECT: "warning", DURABLE: "accent", CONSOMMABLE: "muted",
@@ -25,6 +26,8 @@ type ApiArticle = {
 };
 
 export default function ArticlesPage() {
+  const { hasRole } = useAuth();
+  const canWrite = hasRole("ADMIN", "MAGASINIER");
   const [refreshKey, setRefreshKey] = useState(0);
   const { data, loading, usingFallback } = useApiData<ApiArticle[]>(
     () => articlesApi.list(),
@@ -41,7 +44,7 @@ export default function ArticlesPage() {
         breadcrumb="Référentiels"
         title="Articles"
         description="Catalogue des articles, familles et natures (stockable, achat direct, durable)."
-        actions={<NewArticleDialog onSuccess={() => setRefreshKey((k) => k + 1)} />}
+        actions={canWrite ? <NewArticleDialog onSuccess={() => setRefreshKey((k) => k + 1)} /> : undefined}
       />
       <OfflineBanner show={usingFallback} />
 

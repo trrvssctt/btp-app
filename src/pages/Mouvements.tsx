@@ -5,6 +5,7 @@ import { stockMovementsApi } from "@/lib/api";
 import { formatDateTime, mouvementLabel } from "@/data/labels";
 import { useEffect, useState } from "react";
 import { NewMouvementDialog } from "@/components/dialogs/NewMouvementDialog";
+import { useAuth } from "@/contexts/AuthContext";
 
 const iconFor = (type: string) => {
   if (type === "ENTREE" || type.includes("ENTREE") || type === "TRANSFERT_ENTRANT") return ArrowDown;
@@ -19,6 +20,8 @@ const isSortie = (type: string, quantite: number) =>
   (type === "AJUSTEMENT_INVENTAIRE" && quantite < 0);
 
 export default function MouvementsPage() {
+  const { hasRole } = useAuth();
+  const canCreate = hasRole("ADMIN", "MAGASINIER");
   const [mouvements, setMouvements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -36,7 +39,7 @@ export default function MouvementsPage() {
         breadcrumb="Opérations"
         title="Journal des mouvements"
         description="Traçabilité complète des entrées, sorties, transferts, retours et ajustements."
-        actions={<NewMouvementDialog onSuccess={() => setRefreshKey((k) => k + 1)} />}
+        actions={canCreate ? <NewMouvementDialog onSuccess={() => setRefreshKey((k) => k + 1)} /> : undefined}
       />
       <div className="rounded-xl bg-card border border-border shadow-sm overflow-hidden">
         {loading ? (

@@ -8,6 +8,7 @@ import { NewTransfertDialog } from "@/components/dialogs/NewTransfertDialog";
 import { useApiData } from "@/hooks/useApiData";
 import { transfersApi } from "@/lib/api";
 import { formatDate } from "@/data/labels";
+import { useAuth } from "@/contexts/AuthContext";
 
 const MOCK_TRANSFERTS = [
   { id: "t1", numero: "TR-2026-0034", created_at: "2026-04-17", article_code: "CIM-32.5", article_designation: "Ciment Portland 32.5R",  quantite: 60,  unite: "sac",  depot_from_code: "MAG-DKR", depot_to_code: "CHAN-01", statut: "REÇU" },
@@ -19,6 +20,8 @@ const tone = (s: string) =>
   s === "REÇU" ? "success" : s === "EXPÉDIÉ" ? "info" : s === "PRÉPARÉ" ? "warning" : s === "LITIGE" ? "destructive" : "muted";
 
 export default function TransfertsPage() {
+  const { hasRole } = useAuth();
+  const canCreate = hasRole("ADMIN", "MAGASINIER", "RESP_LOGISTIQUE");
   const [refreshKey, setRefreshKey] = useState(0);
 
   const { data, loading, usingFallback } = useApiData<any[]>(
@@ -33,7 +36,7 @@ export default function TransfertsPage() {
         breadcrumb="Opérations"
         title="Transferts inter-dépôts"
         description="Mouvements émetteur → récepteur avec accusé de réception obligatoire."
-        actions={<NewTransfertDialog onSuccess={() => setRefreshKey((k) => k + 1)} />}
+        actions={canCreate ? <NewTransfertDialog onSuccess={() => setRefreshKey((k) => k + 1)} /> : undefined}
       />
       <OfflineBanner show={usingFallback} />
       <div className="rounded-xl bg-card border border-border shadow-sm overflow-hidden">

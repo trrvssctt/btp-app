@@ -3,13 +3,15 @@ import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft, Loader2, Building2, FileText, Package, ArrowLeftRight,
   ShoppingCart, ClipboardCheck, TrendingUp, MapPin, User, Calendar,
-  AlertCircle, ChevronRight, BarChart3,
+  AlertCircle, ChevronRight, BarChart3, Wallet,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { projectsApi } from "@/lib/api";
+import { projectsApi, budgetLotsApi } from "@/lib/api";
+import { NewBudgetLotDialog } from "@/components/dialogs/NewBudgetLotDialog";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   formatDate, formatEur, statutDemandeLabel, statutDemandeTone,
   urgenceTone, mouvementLabel,
@@ -60,15 +62,25 @@ function EmptyState({ message }: { message: string }) {
 
 export default function ProjetDetail() {
   const { id } = useParams<{ id: string }>();
+  const { hasRole } = useAuth();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [budgetLots, setBudgetLots] = useState<any[]>([]);
+
+  const reloadLots = () => {
+    if (!id) return;
+    budgetLotsApi.list({ project_id: id }).then(setBudgetLots).catch(() => {});
+  };
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    projectsApi.detail(id)
-      .then(setData)
+    Promise.all([
+      projectsApi.detail(id),
+      budgetLotsApi.list({ project_id: id }),
+    ])
+      .then(([proj, lots]) => { setData(proj); setBudgetLots(lots); })
       .catch(() => setError("Impossible de charger ce projet."))
       .finally(() => setLoading(false));
   }, [id]);
@@ -172,8 +184,13 @@ export default function ProjetDetail() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="chantiers" className="space-y-4">
+      <Tabs defaultValue="budget" className="space-y-4">
         <TabsList className="h-auto flex-wrap gap-1 bg-muted/50 p-1 rounded-xl">
+          <TabsTrigger value="budget" className="gap-1.5 text-xs sm:text-sm px-3 py-2 rounded-lg">
+            <Wallet className="w-3.5 h-3.5" />
+            Budget
+            <span className="ml-1 text-xs bg-muted rounded px-1.5 py-0.5 text-muted-foreground font-mono">{budgetLots.length}</span>
+          </TabsTrigger>
           {[
             { value: "chantiers", label: "Chantiers", count: sites.length, icon: MapPin },
             { value: "demandes", label: "Demandes", count: requests.length, icon: FileText },
@@ -190,6 +207,49 @@ export default function ProjetDetail() {
             </TabsTrigger>
           ))}
         </TabsList>
+
+        {/* ─── BUDGET LOTS ─── */}
+        <TabsContent value="budget">
+          <div className="space-y-4">
+            {(hasRole("ADMIN") || hasRole("CHEF_PROJET")) && (
+              <div className="flex justify-end">
+                <NewBudgetLotDialog projectId={id!} onSuccess={reloadLots} />
+              </div>
+            )}
+            {budgetLots.length === 0 ? (
+              <EmptyState message="Aucun lot budgétaire défini pour ce projet." />
+            ) : (
+              <div className="rounded-xl bg-card border border-border shadow-sm overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
+                    <tr>
+                      <th className="text-left font-medium px-4 py-3">Code</th>
+                      <th className="text-left font-medium px-4 py-3">Libellé</th>
+                      <th className="text-right font-medium px-4 py-3">Montant prévu</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {budgetLots.map((lot: any) => (
+                      <tr key={lot.id} className="hover:bg-muted/20 transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs text-accent">{lot.code}</td>
+                        <td className="px-4 py-3 text-sm">{lot.libelle}</td>
+                        <td className="px-4 py-3 text-right tabular-nums font-semibold">{formatEur(Number(lot.montant_prevu))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-muted/40">
+                      <td colSpan={2} className="px-4 py-3 text-right font-semibold text-sm">Total lots</td>
+                      <td className="px-4 py-3 text-right tabular-nums font-bold">
+                        {formatEur(budgetLots.reduce((s: number, l: any) => s + Number(l.montant_prevu || 0), 0))}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </div>
+        </TabsContent>
 
         {/* ─── CHANTIERS ─── */}
         <TabsContent value="chantiers">
