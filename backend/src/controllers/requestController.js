@@ -28,6 +28,12 @@ const approvalSchema = z.object({
   commentaire: z.string().max(500).optional().nullable(),
 });
 
+const ETAPE_PERM = {
+  TECHNIQUE:  'REQUEST_VALIDATE_TECH',
+  BUDGETAIRE: 'REQUEST_VALIDATE_BUDGET',
+  DIRECTION:  'REQUEST_VALIDATE_DIRECTION',
+};
+
 exports.list = asyncHandler(async (req, res) => {
   res.json({ data: await model.list(req.query) });
 });
@@ -77,8 +83,8 @@ exports.cancel = asyncHandler(async (req, res) => {
 exports.addApproval = [
   validate(approvalSchema),
   asyncHandler(async (req, res) => {
-    const requiredPerm = req.body.etape === 'TECHNIQUE' ? 'REQUEST_VALIDATE_TECH' : 'REQUEST_VALIDATE_BUDGET';
-    const ok = req.user.permissions.includes(requiredPerm) || req.user.roles.includes('ADMIN');
+    const requiredPerm = ETAPE_PERM[req.body.etape];
+    const ok = requiredPerm && (req.user.permissions.includes(requiredPerm) || req.user.roles.includes('ADMIN'));
     if (!ok) throw new HttpError(403, `Permission required: ${requiredPerm}`);
 
     const a = await model.addApproval({
@@ -101,7 +107,7 @@ exports.requestComplement = [
   asyncHandler(async (req, res) => {
     const r = await model.findById(req.params.id);
     if (!r) throw new HttpError(404, 'Request not found');
-    if (!['VALIDATION_TECHNIQUE', 'VALIDATION_BUDGETAIRE'].includes(r.statut)) {
+    if (!['VALIDATION_TECHNIQUE', 'VALIDATION_BUDGETAIRE', 'VALIDATION_DIRECTION'].includes(r.statut)) {
       throw new HttpError(409, 'La demande doit être en cours de validation pour demander un complément');
     }
     const updated = await model.requestComplement(req.params.id, req.body.commentaire);

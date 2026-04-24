@@ -21,6 +21,7 @@ const PERMISSIONS = [
   ['REQUEST_CREATE', 'Créer une demande'],
   ['REQUEST_VALIDATE_TECH', 'Validation technique'],
   ['REQUEST_VALIDATE_BUDGET', 'Validation budgétaire'],
+  ['REQUEST_VALIDATE_DIRECTION', 'Validation direction (DAF)'],
   ['STOCK_WRITE', 'Modifier le stock'],
   ['PURCHASE_WRITE', 'Émettre une commande'],
   ['PROJECT_WRITE', 'Gérer projets et chantiers'],
@@ -37,6 +38,7 @@ const ROLE_PERMS = {
   CONTROLEUR: ['REQUEST_VALIDATE_BUDGET'],
   RESP_TECHNIQUE: ['REQUEST_VALIDATE_TECH'],
   DEMANDEUR: ['REQUEST_CREATE'],
+  DAF: ['REQUEST_VALIDATE_DIRECTION'],
 };
 
 const FAMILIES = [
