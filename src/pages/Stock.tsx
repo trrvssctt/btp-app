@@ -13,6 +13,7 @@ import {
 import { stockApi, depotsApi } from "@/lib/api";
 import { formatNum, typeDepotLabel } from "@/data/labels";
 import { useEffect, useMemo, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { NewMouvementDialog } from "@/components/dialogs/NewMouvementDialog";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -388,7 +389,14 @@ export default function StockPage() {
 
                         {/* Article */}
                         <td className="px-4 py-3.5 max-w-[220px]">
-                          <p className="font-medium truncate leading-tight">{s.article_designation}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium truncate leading-tight">{s.article_designation}</p>
+                            {s.article_actif === false && (
+                              <StatusBadge tone="muted" className="text-[10px] px-2 py-1">
+                                Désactivé
+                              </StatusBadge>
+                            )}
+                          </div>
                           {s.article_categorie && (
                             <p className="text-xs text-muted-foreground truncate mt-0.5">{s.article_categorie}</p>
                           )}
@@ -441,9 +449,13 @@ export default function StockPage() {
 
                         {/* Action */}
                         <td className="px-2 py-3.5">
-                          <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-muted text-muted-foreground">
+                          <Link
+                            to={`/stock/${s.id}`}
+                            onClick={(event) => event.stopPropagation()}
+                            className="opacity-70 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-muted text-muted-foreground"
+                          >
                             <Eye className="w-3.5 h-3.5" />
-                          </button>
+                          </Link>
                         </td>
                       </tr>
                     );

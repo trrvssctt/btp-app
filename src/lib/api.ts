@@ -68,8 +68,8 @@ export const projectsApi = {
 export const articlesApi = {
   list: (search?: string) =>
     api.get<{ data: any[] }>("/articles", { params: search ? { search } : undefined }).then((r) => r.data.data),
-  create: (a: any) => api.post<{ data: any }>("/articles", a).then((r) => r.data.data),
-};
+  create: (a: any) => api.post<{ data: any }>("/articles", a).then((r) => r.data.data),  update: (id: string, body: { code?: string; designation?: string; nature?: string; prix_moyen?: number; seuil_min?: number; actif?: boolean }) =>
+    api.put<{ data: any }>(`/articles/${id}`, body).then((r) => r.data.data),};
 
 export const depotsApi = {
   list: () => api.get<{ data: any[] }>("/depots").then((r) => r.data.data),
@@ -78,6 +78,9 @@ export const depotsApi = {
 export const stockApi = {
   list: (params?: { depot_id?: string; article_id?: string }) =>
     api.get<{ data: any[] }>("/stock", { params }).then((r) => r.data.data),
+  get: (id: string) => api.get<{ data: any }>(`/stock/${id}`).then((r) => r.data.data),
+  update: (id: string, body: { qte_disponible?: number; qte_reservee?: number; seuil_alerte?: number }) =>
+    api.put<{ data: any }>(`/stock/${id}`, body).then((r) => r.data.data),
 };
 
 export const stockMovementsApi = {
@@ -146,6 +149,23 @@ export const equipementsApi = {
     api.post<{ data: any }>("/equipements", body).then((r) => r.data.data),
   update: (id: string, body: { etat?: string; designation?: string }) =>
     api.put<{ data: any }>(`/equipements/${id}`, body).then((r) => r.data.data),
+  // UC-11 — Affectations
+  listAssignments: (id: string) =>
+    api.get<{ data: any[] }>(`/equipements/${id}/affectations`).then((r) => r.data.data),
+  createAssignment: (id: string, body: {
+    site_id?: string | null;
+    user_id?: string | null;
+    date_debut: string;
+    commentaire?: string | null;
+    request_id?: string | null;
+  }) =>
+    api.post<{ data: any }>(`/equipements/${id}/affectations`, body).then((r) => r.data.data),
+  returnEquipment: (id: string, affId: string, body: {
+    date_fin?: string;
+    etat_retour?: "DISPONIBLE" | "EN_MAINTENANCE" | "HORS_SERVICE" | "PERDU";
+    commentaire?: string | null;
+  }) =>
+    api.put<{ data: any }>(`/equipements/${id}/affectations/${affId}/retour`, body).then((r) => r.data.data),
 };
 
 export const usersApi = {

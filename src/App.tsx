@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound.tsx";
 import Demandes from "./pages/Demandes.tsx";
 import DemandeDetail from "./pages/DemandeDetail.tsx";
 import Stock from "./pages/Stock.tsx";
+import StockDetail from "./pages/StockDetail.tsx";
 import Mouvements from "./pages/Mouvements.tsx";
 import Transferts from "./pages/Transferts.tsx";
 import Achats from "./pages/Achats.tsx";
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/demandes" element={protect(<Demandes />)} />
             <Route path="/demandes/:id" element={protect(<DemandeDetail />)} />
             <Route path="/stock" element={protect(<Stock />, ["MAGASINIER", "CONDUCTEUR", "CHEF_PROJET", "RESP_TECHNIQUE", "RESP_LOGISTIQUE"])} />
+            <Route path="/stock/:id" element={protect(<StockDetail />, ["MAGASINIER", "CONDUCTEUR", "CHEF_PROJET", "RESP_TECHNIQUE", "RESP_LOGISTIQUE"])} />
             <Route path="/mouvements" element={protect(<Mouvements />, ["MAGASINIER", "RESP_LOGISTIQUE"])} />
             <Route path="/transferts" element={protect(<Transferts />, ["MAGASINIER", "RESP_LOGISTIQUE"])} />
             <Route path="/achats" element={protect(<Achats />, ["ACHETEUR", "RESP_LOGISTIQUE"])} />
