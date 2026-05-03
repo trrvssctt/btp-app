@@ -116,10 +116,10 @@ export function AffectEquipementDialog({ equipementId, equipementCode, trigger, 
           {requests.length > 0 && (
             <div className="space-y-1.5">
               <Label>Demande associée (optionnel)</Label>
-              <Select value={requestId} onValueChange={setRequestId}>
+              <Select value={requestId || "__none__"} onValueChange={(v) => setRequestId(v === "__none__" ? "" : v)}>
                 <SelectTrigger><SelectValue placeholder="Sélectionner une demande…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">— Aucune —</SelectItem>
+                  <SelectItem value="__none__">— Aucune —</SelectItem>
                   {requests.map((r) => (
                     <SelectItem key={r.id} value={r.id}>{r.numero} — {r.motif}</SelectItem>
                   ))}
@@ -134,10 +134,10 @@ export function AffectEquipementDialog({ equipementId, equipementCode, trigger, 
           {/* Affectataire */}
           <div className="space-y-1.5">
             <Label>Affectataire (agent, optionnel)</Label>
-            <Select value={userId} onValueChange={setUserId}>
+            <Select value={userId || "__none__"} onValueChange={(v) => setUserId(v === "__none__" ? "" : v)}>
               <SelectTrigger><SelectValue placeholder="Sélectionner un agent…" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">— Aucun —</SelectItem>
+                <SelectItem value="__none__">— Aucun —</SelectItem>
                 {users.map((u) => (
                   <SelectItem key={u.id} value={u.id}>{u.nom} ({u.email})</SelectItem>
                 ))}
