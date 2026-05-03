@@ -7,7 +7,7 @@ async function list({ depot_id, article_id } = {}) {
   if (article_id) { params.push(article_id); where.push(`s.article_id = $${params.length}`); }
   const { rows } = await query(
     `SELECT s.*,
-            a.code AS article_code, a.designation AS article_designation,
+            a.code AS article_code, a.designation AS article_designation, a.actif AS article_actif,
             d.code AS depot_code, d.nom AS depot_nom, d.type_depot,
             u.code AS article_unite
        FROM stock_balances s
@@ -24,7 +24,7 @@ async function list({ depot_id, article_id } = {}) {
 async function findById(id) {
   const { rows } = await query(
     `SELECT s.*,
-            a.code AS article_code, a.designation AS article_designation,
+            a.code AS article_code, a.designation AS article_designation, a.actif AS article_actif,
             d.code AS depot_code, d.nom AS depot_nom
        FROM stock_balances s
        JOIN articles a ON a.id = s.article_id

@@ -5,7 +5,6 @@ function notFound(req, res, _next) {
   res.status(404).json({ error: { message: `Not found: ${req.method} ${req.originalUrl}` } });
 }
 
-// eslint-disable-next-line no-unused-vars
 function errorHandler(err, req, res, _next) {
   if (err instanceof ZodError) {
     return res.status(400).json({

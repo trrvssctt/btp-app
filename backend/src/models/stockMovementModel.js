@@ -11,10 +11,12 @@ async function list({ article_id, depot_id, type_mouvement } = {}) {
     `SELECT sm.*,
             a.code AS article_code, a.designation AS article_designation,
             d.code AS depot_code, d.nom AS depot_nom,
+            s.code AS site_code, s.nom AS site_nom,
             u.nom AS user_nom
        FROM stock_movements sm
        JOIN articles a ON a.id = sm.article_id
        JOIN depots d ON d.id = sm.depot_id
+       LEFT JOIN sites s ON s.id = sm.site_id
        LEFT JOIN users u ON u.id = sm.user_id
       ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
       ORDER BY sm.created_at DESC`,
@@ -28,10 +30,12 @@ async function findById(id) {
     `SELECT sm.*,
             a.code AS article_code, a.designation AS article_designation,
             d.code AS depot_code, d.nom AS depot_nom,
+            s.code AS site_code, s.nom AS site_nom,
             u.nom AS user_nom
        FROM stock_movements sm
        JOIN articles a ON a.id = sm.article_id
        JOIN depots d ON d.id = sm.depot_id
+       LEFT JOIN sites s ON s.id = sm.site_id
        LEFT JOIN users u ON u.id = sm.user_id
       WHERE sm.id = $1`,
     [id],

@@ -44,6 +44,7 @@ async function update(id, a) {
   if (a.nature !== undefined)      add('nature', a.nature);
   if (a.prix_moyen !== undefined)  add('prix_moyen', a.prix_moyen);
   if (a.seuil_min !== undefined)   add('seuil_min', a.seuil_min);
+  if (a.actif !== undefined)       add('actif', a.actif);
   const { rows } = await query(
     `UPDATE articles SET ${sets.join(', ')} WHERE id = $1 RETURNING *`,
     params,

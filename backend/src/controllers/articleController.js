@@ -12,6 +12,7 @@ const schema = z.object({
   nature: z.enum(['STOCKABLE', 'ACHAT_DIRECT', 'DURABLE', 'CONSOMMABLE']),
   prix_moyen: z.coerce.number().nonnegative().optional().nullable(),
   seuil_min: z.coerce.number().nonnegative().optional().nullable(),
+  actif: z.boolean().optional(),
 });
 
 exports.list = asyncHandler(async (req, res) => {
