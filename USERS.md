@@ -4,7 +4,7 @@
 
 | Rôle             | Permissions                                                 |
 |------------------|-------------------------------------------------------------|
-| ADMIN            | Tout (REQUEST_CREATE, VALIDATE_TECH, VALIDATE_BUDGET, STOCK_WRITE, PURCHASE_WRITE, PROJECT_WRITE, ARTICLE_WRITE, ADMIN_ALL) |
+| ADMIN            | Tout (REQUEST_CREATE, VALIDATE_TECH, VALIDATE_BUDGET, VALIDATE_DIRECTION, STOCK_WRITE, PURCHASE_WRITE, PROJECT_WRITE, ARTICLE_WRITE, ADMIN_ALL) |
 | CHEF_PROJET      | REQUEST_VALIDATE_BUDGET, PROJECT_WRITE                      |
 | CONDUCTEUR       | REQUEST_CREATE                                              |
 | MAGASINIER       | STOCK_WRITE, ARTICLE_WRITE                                  |
@@ -12,6 +12,7 @@
 | CONTROLEUR       | REQUEST_VALIDATE_BUDGET                                     |
 | RESP_TECHNIQUE   | REQUEST_VALIDATE_TECH                                       |
 | DEMANDEUR        | REQUEST_CREATE                                              |
+| DAF              | REQUEST_VALIDATE_DIRECTION (validation finale budget)       |
 
 ---
 
@@ -30,3 +31,4 @@
 | El Hadji Ndiaye    | elhadji.ndiaye@btp-sn.com      | ElHadji2025!    | RESP_TECHNIQUE   |
 | Aïssatou Mbaye     | aissatou.mbaye@btp-sn.com      | Aissatou2025!   | DEMANDEUR        |
 | Oumar Sarr         | oumar.sarr@btp-sn.com          | Oumar2025!      | DEMANDEUR        |
+| Directeur Financier | daf@btp-sn.com                | Daf2025!        | DAF              |
