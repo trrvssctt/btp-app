@@ -50,8 +50,8 @@ export function NewEquipementDialog({ trigger, onSuccess }: { trigger?: React.Re
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="DISPONIBLE">Disponible</SelectItem>
-                  <SelectItem value="AFFECTE">Affecté</SelectItem>
                   <SelectItem value="EN_MAINTENANCE">En maintenance</SelectItem>
+                  <SelectItem value="HORS_SERVICE">Hors service</SelectItem>
                 </SelectContent>
               </Select>
             </div>
