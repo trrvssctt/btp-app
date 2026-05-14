@@ -1,0 +1,93 @@
+# === GUIDE DE DÉPLOIEMENT VPS — BTP APP ===
+# VPS : 185.215.165.43
+# Port cible : 2000
+# Dossier cible : /opt/btp-app
+
+# 1. Connexion SSH au VPS
+# (Remplacez root par votre utilisateur si nécessaire)
+ssh root@185.215.165.43
+
+# 2. Mise à jour du système et installation des dépendances
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y git curl nginx
+
+# Installation de Node.js 20
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Installation de PM2
+sudo npm install -g pm2
+
+# 3. Préparation du dossier et clonage du projet
+sudo mkdir -p /opt/btp-app
+sudo chown -R $USER:$USER /opt/btp-app
+cd /opt/btp-app
+git clone https://github.com/trrvssctt/btp-app.git .
+
+# 4. Build du Frontend
+# On crée un fichier .env.local pour pointer vers l'API locale
+echo "VITE_API_URL=/api" > .env.local
+npm install
+npm run build
+
+# 5. Configuration du Backend
+cd backend
+npm install
+
+# Création du fichier .env pour la production
+# NOTE : Modifiez DATABASE_URL et JWT_SECRET si besoin
+cat <<EOF > .env
+PORT=3000
+NODE_ENV=production
+DATABASE_URL="postgres://gestionapp_btp_db_master:xT%7Eez%3BGD%23EW%273-K@postgresql-gestionapp.alwaysdata.net:5432/gestionapp_btp_project"
+JWT_SECRET=votre_secret_jwt_tres_long_et_aleatoire
+JWT_EXPIRES_IN=12h
+CORS_ORIGINS=http://185.215.165.43:2000
+EOF
+
+# 6. Configuration de Nginx pour le port 2000
+# On crée un nouveau fichier de configuration
+sudo tee /etc/nginx/sites-available/btp-app <<EOF
+server {
+    listen 2000;
+    server_name 185.215.165.43;
+
+    root /opt/btp-app/dist;
+    index index.html;
+
+    # Proxy API vers le backend Node.js
+    location /api {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    # SPA React — toutes les routes renvoient index.html
+    location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+
+    # Cache des assets statiques
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+EOF
+
+# Activation et redémarrage de Nginx
+sudo ln -sf /etc/nginx/sites-available/btp-app /etc/nginx/sites-enabled/
+sudo ufw allow 2000/tcp
+sudo nginx -t && sudo systemctl restart nginx
+
+# 7. Démarrage du Backend avec PM2
+cd /opt/btp-app/backend
+pm2 start src/server.js --name "btp-backend"
+pm2 save
+pm2 startup
+
+# 8. Accès à l'application
+# http://185.215.165.43:2000
