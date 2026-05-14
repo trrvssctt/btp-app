@@ -268,7 +268,11 @@ CREATE TABLE IF NOT EXISTS equipment_assignments (
   site_id      UUID REFERENCES sites(id),
   user_id      UUID REFERENCES users(id),
   date_debut   DATE NOT NULL,
-  date_fin     DATE
+  date_fin     DATE,
+  request_id   UUID REFERENCES requests(id),
+  commentaire  TEXT,
+  created_by   UUID REFERENCES users(id),
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Notifications ---------------------------------------------------------------
