@@ -17,7 +17,14 @@ function errorHandler(err, req, res, _next) {
     });
   }
   console.error('[error]', err);
-  res.status(500).json({ error: { message: 'Internal server error' } });
+  // Temporairement retourné pour débogage sur le VPS
+  res.status(500).json({ 
+    error: { 
+      message: 'Internal server error', 
+      debug: err.message,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    } 
+  });
 }
 
 module.exports = { notFound, errorHandler };

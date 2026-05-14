@@ -10,9 +10,15 @@ const app = express();
 app.use(helmet());
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin) return cb(null, true); // curl, server-to-server
-    if (env.corsOrigins.includes('*') || env.corsOrigins.includes(origin)) return cb(null, true);
-    return cb(new Error(`CORS blocked: ${origin}`));
+    // Autoriser les requêtes sans origine (comme curl ou outils serveurs)
+    if (!origin) return cb(null, true);
+    
+    const allowed = env.corsOrigins.includes('*') || env.corsOrigins.includes(origin);
+    if (allowed) return cb(null, true);
+
+    const error = new Error(`CORS blocked: ${origin}`);
+    error.status = 403; // Éviter l'erreur 500 pour un simple blocage CORS
+    return cb(error);
   },
   credentials: true,
 }));
