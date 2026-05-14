@@ -135,7 +135,7 @@ async function createAssignment({ equipment_id, site_id, user_id, date_debut, co
 }
 
 // ─── Retour / clôture d'affectation ──────────────────────────────────────────
-async function closeAssignment(assignmentId, { date_fin, etat_retour, commentaire, updated_by }) {
+async function closeAssignment(assignmentId, { date_fin, etat_retour, commentaire }) {
   return withTransaction(async (c) => {
     const aff = (await c.query(
       `SELECT ea.*, e.etat AS eq_etat FROM equipment_assignments ea

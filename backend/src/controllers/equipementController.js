@@ -51,7 +51,7 @@ exports.create = [
   validate(createSchema),
   asyncHandler(async (req, res) => {
     const eq = await model.create(req.body);
-    await auditLog({ action: 'CREATE_EQUIPEMENT', entity_type: 'equipements', entity_id: eq.id, user_id: req.user.id, after: eq });
+    await auditLog({ action: 'CREATE_EQUIPEMENT', entity_type: 'equipements', entity_id: eq.id, actor_id: req.user.id, detail: JSON.stringify(eq) });
     res.status(201).json({ data: eq });
   }),
 ];
@@ -62,7 +62,7 @@ exports.update = [
     const before = await model.findById(req.params.id);
     if (!before) throw new HttpError(404, 'Équipement non trouvé');
     const updated = await model.update(req.params.id, req.body);
-    await auditLog({ action: 'UPDATE_EQUIPEMENT', entity_type: 'equipements', entity_id: updated.id, user_id: req.user.id, before, after: updated });
+    await auditLog({ action: 'UPDATE_EQUIPEMENT', entity_type: 'equipements', entity_id: updated.id, actor_id: req.user.id, detail: JSON.stringify({ before, after: updated }) });
     res.json({ data: updated });
   }),
 ];
@@ -78,9 +78,6 @@ exports.listAssignments = asyncHandler(async (req, res) => {
 exports.createAssignment = [
   validate(affectSchema),
   asyncHandler(async (req, res) => {
-    const eq = await model.findById(req.params.id);
-    if (!eq) throw new HttpError(404, 'Équipement non trouvé');
-
     const aff = await model.createAssignment({
       equipment_id: req.params.id,
       site_id:      req.body.site_id,
@@ -95,8 +92,8 @@ exports.createAssignment = [
       action: 'AFFECTER_EQUIPEMENT',
       entity_type: 'equipements',
       entity_id: req.params.id,
-      user_id: req.user.id,
-      after: { affectation_id: aff.id, site_id: aff.site_id, user_id: aff.user_id, date_debut: aff.date_debut, request_id: aff.request_id },
+      actor_id: req.user.id,
+      detail: JSON.stringify({ affectation_id: aff.id, site_id: aff.site_id, user_id: aff.user_id, date_debut: aff.date_debut, request_id: aff.request_id }),
     });
 
     res.status(201).json({ data: aff });
@@ -107,18 +104,17 @@ exports.returnEquipment = [
   validate(retourSchema),
   asyncHandler(async (req, res) => {
     const result = await model.closeAssignment(req.params.affId, {
-      date_fin:     req.body.date_fin,
-      etat_retour:  req.body.etat_retour ?? 'DISPONIBLE',
-      commentaire:  req.body.commentaire,
-      updated_by:   req.user.id,
+      date_fin:    req.body.date_fin,
+      etat_retour: req.body.etat_retour ?? 'DISPONIBLE',
+      commentaire: req.body.commentaire,
     });
 
     await auditLog({
       action: 'RETOUR_EQUIPEMENT',
       entity_type: 'equipements',
       entity_id: result.equipment_id,
-      user_id: req.user.id,
-      after: result,
+      actor_id: req.user.id,
+      detail: JSON.stringify(result),
     });
 
     res.json({ data: result });
