@@ -25,7 +25,7 @@ const ruleSchema = z.object({
   enabled:     z.boolean().optional(),
   priority:    z.coerce.number().int().optional(),
   conditions:  z.array(conditionSchema).min(1),
-  actions:     z.array(actionSchema).min(1),
+  actions:     z.array(actionSchema).optional().default([]),
 });
 
 exports.list = asyncHandler(async (_req, res) => {
