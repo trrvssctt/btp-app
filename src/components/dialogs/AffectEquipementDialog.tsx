@@ -76,6 +76,10 @@ export function AffectEquipementDialog({ equipementId, equipementCode, trigger, 
       onSuccess?.();
     } catch (err) {
       toast.error("Erreur lors de l'affectation", { description: apiError(err) });
+      // Rafraîchir la liste pour refléter l'état réel de l'équipement en DB
+      reset();
+      setOpen(false);
+      onSuccess?.();
     } finally {
       setSaving(false);
     }
