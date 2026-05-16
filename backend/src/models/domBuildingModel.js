@@ -92,7 +92,66 @@ async function createRoom(r) {
   return rows[0];
 }
 
+async function deleteBuilding(id) {
+  await query(`DELETE FROM dom_buildings WHERE id = $1`, [id]);
+}
+
+async function updateFloor(id, data) {
+  const sets = ['updated_at = now()'];
+  const params = [id];
+  const add = (col, val) => { params.push(val ?? null); sets.push(`${col} = $${params.length}`); };
+  if (data.name !== undefined)      add('name', data.name);
+  if (data.level_num !== undefined) add('level_num', data.level_num);
+  const { rows } = await query(`UPDATE dom_floors SET ${sets.join(', ')} WHERE id = $1 RETURNING *`, params);
+  return rows[0] || null;
+}
+async function deleteFloor(id) {
+  await query(`DELETE FROM dom_floors WHERE id = $1`, [id]);
+}
+
+async function updateZone(id, data) {
+  const sets = [];
+  const params = [id];
+  const add = (col, val) => { params.push(val ?? null); sets.push(`${col} = $${params.length}`); };
+  if (data.name !== undefined) add('name', data.name);
+  if (data.type !== undefined) add('type', data.type);
+  if (!sets.length) return null;
+  const { rows } = await query(`UPDATE dom_zones SET ${sets.join(', ')} WHERE id = $1 RETURNING *`, params);
+  return rows[0] || null;
+}
+async function deleteZone(id) {
+  await query(`DELETE FROM dom_zones WHERE id = $1`, [id]);
+}
+
+async function updateApartment(id, data) {
+  const { rows } = await query(
+    `UPDATE dom_apartments SET number = $2 WHERE id = $1 RETURNING *`,
+    [id, data.number],
+  );
+  return rows[0] || null;
+}
+async function deleteApartment(id) {
+  await query(`DELETE FROM dom_apartments WHERE id = $1`, [id]);
+}
+
+async function updateRoom(id, data) {
+  const sets = [];
+  const params = [id];
+  const add = (col, val) => { params.push(val ?? null); sets.push(`${col} = $${params.length}`); };
+  if (data.name !== undefined)  add('name', data.name);
+  if (data.usage !== undefined) add('usage', data.usage);
+  if (!sets.length) return null;
+  const { rows } = await query(`UPDATE dom_rooms SET ${sets.join(', ')} WHERE id = $1 RETURNING *`, params);
+  return rows[0] || null;
+}
+async function deleteRoom(id) {
+  await query(`DELETE FROM dom_rooms WHERE id = $1`, [id]);
+}
+
 module.exports = {
-  listBuildings, getTree, createBuilding, updateBuilding,
-  createFloor, createZone, createApartment, createRoom,
+  listBuildings, getTree, createBuilding, updateBuilding, deleteBuilding,
+  createFloor, updateFloor, deleteFloor,
+  createZone, updateZone, deleteZone,
+  createApartment, updateApartment, deleteApartment,
+  createRoom, updateRoom, deleteRoom,
 };

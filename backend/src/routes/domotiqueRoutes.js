@@ -13,16 +13,25 @@ router.use(authenticate);
 router.use(requireRole('ADMIN'));
 
 // ── Bâtiments ──────────────────────────────────────────────────────────────
-router.get ('/buildings',          building.list);
-router.post('/buildings',          building.create);
-router.put ('/buildings/:id',      building.update);
-router.get ('/buildings/:id/tree', building.getTree);
+router.get   ('/buildings',          building.list);
+router.post  ('/buildings',          building.create);
+router.put   ('/buildings/:id',      building.update);
+router.delete('/buildings/:id',      building.delete);
+router.get   ('/buildings/:id/tree', building.getTree);
 
 // ── Hiérarchie ─────────────────────────────────────────────────────────────
-router.post('/floors',      building.createFloor);
-router.post('/zones',       building.createZone);
-router.post('/apartments',  building.createApartment);
-router.post('/rooms',       building.createRoom);
+router.post  ('/floors',         building.createFloor);
+router.put   ('/floors/:id',     building.updateFloor);
+router.delete('/floors/:id',     building.deleteFloor);
+router.post  ('/zones',          building.createZone);
+router.put   ('/zones/:id',      building.updateZone);
+router.delete('/zones/:id',      building.deleteZone);
+router.post  ('/apartments',     building.createApartment);
+router.put   ('/apartments/:id', building.updateApartment);
+router.delete('/apartments/:id', building.deleteApartment);
+router.post  ('/rooms',          building.createRoom);
+router.put   ('/rooms/:id',      building.updateRoom);
+router.delete('/rooms/:id',      building.deleteRoom);
 
 // ── Équipements ────────────────────────────────────────────────────────────
 router.get ('/devices',     device.list);

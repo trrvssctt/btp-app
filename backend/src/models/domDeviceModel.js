@@ -62,11 +62,20 @@ async function update(id, d) {
   const sets = ['updated_at = now()'];
   const params = [id];
   const add = (col, val) => { params.push(val ?? null); sets.push(`${col} = $${params.length}`); };
-  if (d.name !== undefined)       add('name', d.name);
-  if (d.status !== undefined)     add('status', d.status);
-  if (d.last_value !== undefined) add('last_value', d.last_value);
+  if (d.name !== undefined)         add('name', d.name);
+  if (d.type !== undefined)         add('type', d.type);
+  if (d.category !== undefined)     add('category', d.category);
+  if (d.protocol !== undefined)     add('protocol', d.protocol);
+  if (d.unit !== undefined)         add('unit', d.unit);
+  if (d.status !== undefined)       add('status', d.status);
+  if (d.actif !== undefined)        add('actif', d.actif);
+  if (d.last_value !== undefined)   add('last_value', d.last_value);
   if (d.last_seen_at !== undefined) add('last_seen_at', d.last_seen_at);
-  if (d.location !== undefined)   add('location', d.location);
+  if (d.location !== undefined)     add('location', d.location);
+  if (d.building_id !== undefined)  add('building_id', d.building_id);
+  if (d.floor_id !== undefined)     add('floor_id', d.floor_id);
+  if (d.apartment_id !== undefined) add('apartment_id', d.apartment_id);
+  if (d.room_id !== undefined)      add('room_id', d.room_id);
   const { rows } = await query(`UPDATE dom_devices SET ${sets.join(', ')} WHERE id = $1 RETURNING *`, params);
   return rows[0] || null;
 }
