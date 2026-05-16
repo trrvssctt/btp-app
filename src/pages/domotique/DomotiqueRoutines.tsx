@@ -9,10 +9,14 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Plus, Zap, ChevronDown, ChevronRight, Play, Activity, Loader2, Trash2, ArrowRight,
+  Plus, Zap, ChevronDown, ChevronRight, Play, Activity, Loader2, Trash2, ArrowRight, Pencil,
 } from "lucide-react";
 import { domRuleApi, domDeviceApi, domBuildingApi } from "@/lib/api";
 import { toast } from "sonner";
@@ -177,8 +181,10 @@ export default function DomotiqueRoutines() {
   const [devices, setDevices]   = useState<any[]>([]);
   const [buildings, setBuildings] = useState<any[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [modal, setModal]       = useState(false);
-  const [loading, setLoading]   = useState(true);
+  const [modal, setModal]         = useState(false);
+  const [editRule, setEditRule]   = useState<any | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [loading, setLoading]     = useState(true);
 
   const [fName, setFName] = useState("");
   const [fDesc, setFDesc] = useState("");
@@ -213,25 +219,58 @@ export default function DomotiqueRoutines() {
   }
 
   function openModal() {
+    setEditRule(null);
     setFName(""); setFDesc("");
     setFConditions([blankCond()]);
     setFActions([blankAction()]);
     setModal(true);
   }
 
+  function openEdit(r: any) {
+    setEditRule(r);
+    setFName(r.name);
+    setFDesc(r.description || "");
+    setFConditions((r.conditions || []).map((c: any) => {
+      const dev = devices.find((d: any) => d.id === c.device_id);
+      return { building_id: dev?.building_id || "", device_id: c.device_id || "", device_name: c.device_name || "", metric: c.metric, operator: c.operator, value: c.value };
+    }));
+    setFActions((r.actions || []).map((a: any) => {
+      const dev = devices.find((d: any) => d.id === a.device_id);
+      return { building_id: dev?.building_id || "", device_id: a.device_id || "", device_name: a.device_name || "", command: a.command };
+    }));
+    setModal(true);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    try {
+      await domRuleApi.remove(deleteTarget.id);
+      setRules(p => p.filter(x => x.id !== deleteTarget.id));
+      toast.success(`Routine "${deleteTarget.name}" supprimée`);
+    } catch { toast.error("Erreur lors de la suppression"); }
+    finally { setDeleteTarget(null); }
+  }
+
   async function handleSubmit() {
     if (!fName.trim()) { toast.error("Nom requis"); return; }
+    const payload = {
+      name: fName, description: fDesc,
+      conditions: fConditions.filter(c => c.device_id || c.metric),
+      actions:    fActions.filter(a => a.device_id && a.command),
+    };
     try {
-      await domRuleApi.create({
-        name: fName, description: fDesc,
-        conditions: fConditions.filter(c => c.device_id || c.metric),
-        actions:    fActions.filter(a => a.device_id && a.command),
-      });
+      if (editRule) {
+        await domRuleApi.update(editRule.id, payload);
+        toast.success(`Routine "${fName}" mise à jour`);
+      } else {
+        await domRuleApi.create(payload);
+        toast.success(`Routine "${fName}" créée`);
+      }
       const fresh = await domRuleApi.list();
       setRules((fresh || []).filter(Boolean));
-      toast.success(`Routine "${fName}" créée`);
       setModal(false);
-    } catch { toast.error("Erreur lors de la création"); }
+      setEditRule(null);
+    } catch { toast.error(editRule ? "Erreur lors de la mise à jour" : "Erreur lors de la création"); }
   }
 
   // ── Affichage d'une condition dans le récap ────────────────────────────
@@ -286,6 +325,14 @@ export default function DomotiqueRoutines() {
                   onClick={e => { e.stopPropagation(); simulate(r); }}>
                   <Play className="w-3 h-3" /> Tester
                 </Button>
+                <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs"
+                  onClick={e => { e.stopPropagation(); openEdit(r); }}>
+                  <Pencil className="w-3 h-3" /> Modifier
+                </Button>
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                  onClick={e => { e.stopPropagation(); setDeleteTarget(r); }}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
                 <Switch checked={r.enabled} onClick={e => e.stopPropagation()} onCheckedChange={() => toggleEnabled(r)} />
                 {expanded[r.id] ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
               </div>
@@ -334,11 +381,33 @@ export default function DomotiqueRoutines() {
         ))}
       </div>
 
-      {/* ── Modal création ── */}
+      {/* ── Confirmation suppression ── */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer la routine ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              La routine <span className="font-semibold text-foreground">"{deleteTarget?.name}"</span> sera supprimée
+              définitivement avec toutes ses conditions et actions. Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmDelete}
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Modal création / édition ── */}
       <Dialog open={modal} onOpenChange={v => !v && setModal(false)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Nouvelle routine d'automatisation</DialogTitle>
+            <DialogTitle>{editRule ? "Modifier la routine" : "Nouvelle routine d'automatisation"}</DialogTitle>
             <p className="text-xs text-muted-foreground pt-1">
               Chaque condition et action cible un immeuble indépendamment — une condition dans l'Immeuble A peut déclencher une action dans l'Immeuble B.
             </p>
@@ -417,8 +486,8 @@ export default function DomotiqueRoutines() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setModal(false)}>Annuler</Button>
-            <Button onClick={handleSubmit}>Créer la routine</Button>
+            <Button variant="outline" onClick={() => { setModal(false); setEditRule(null); }}>Annuler</Button>
+            <Button onClick={handleSubmit}>{editRule ? "Enregistrer" : "Créer la routine"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
