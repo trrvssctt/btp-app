@@ -10,7 +10,9 @@
     "migrate": "node src/db/migrate.js",
     "seed": "node src/db/seed.js",
     "seed:reel": "node src/db/seed_reel.js",
-    "patch": "node src/db/patch_equipements.js && node src/db/patch_audit.js && node src/db/patch_notifications.js"
+    "patch": "node src/db/patch_equipements.js && node src/db/patch_audit.js && node src/db/patch_notifications.js",
+    "patch:domotique": "node src/db/patch_domotique.js",
+    "seed:domotique": "node src/db/seed_domotique.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
