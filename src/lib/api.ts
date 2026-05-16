@@ -264,11 +264,13 @@ export const domAlertApi = {
 };
 
 export const domRuleApi = {
-  list:   ()             => api.get<{ data: any[] }>(`${dom}/rules`).then(r => r.data.data),
-  create: (r: any)       => api.post<{ data: any }>(`${dom}/rules`, r).then(r => r.data.data),
-  toggle: (id: string, enabled: boolean) =>
+  list:    ()                        => api.get<{ data: any[] }>(`${dom}/rules`).then(r => r.data.data),
+  create:  (r: any)                  => api.post<{ data: any }>(`${dom}/rules`, r).then(r => r.data.data),
+  update:  (id: string, r: any)      => api.put<{ data: any }>(`${dom}/rules/${id}`, r).then(r => r.data.data),
+  remove:  (id: string)              => api.delete(`${dom}/rules/${id}`),
+  toggle:  (id: string, enabled: boolean) =>
     api.patch<{ data: any }>(`${dom}/rules/${id}/enabled`, { enabled }).then(r => r.data.data),
-  trigger: (id: string)  => api.post<{ data: any }>(`${dom}/rules/${id}/trigger`).then(r => r.data.data),
+  trigger: (id: string)              => api.post<{ data: any }>(`${dom}/rules/${id}/trigger`).then(r => r.data.data),
 };
 
 export const domEnergyApi = {
