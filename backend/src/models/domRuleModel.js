@@ -30,21 +30,27 @@ async function create(r) {
       VALUES($1,$2,$3,$4) RETURNING *
     `, [r.name, r.description ?? null, r.enabled ?? true, r.priority ?? 0]);
 
+    const conditions = [];
     for (const [i, c] of (r.conditions ?? []).entries()) {
-      await client.query(`
+      const { rows: [cond] } = await client.query(`
         INSERT INTO dom_rule_conditions(rule_id, device_id, device_name, metric, operator, value, duration_min, sort_order)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *
       `, [rule.id, c.device_id ?? null, c.device_name ?? null, c.metric, c.operator, String(c.value), c.duration_min ?? null, i]);
+      conditions.push(cond);
     }
 
+    const actions = [];
     for (const [i, a] of (r.actions ?? []).entries()) {
-      await client.query(`
+      const { rows: [act] } = await client.query(`
         INSERT INTO dom_rule_actions(rule_id, device_id, device_name, command, sort_order)
-        VALUES($1,$2,$3,$4,$5)
+        VALUES($1,$2,$3,$4,$5) RETURNING *
       `, [rule.id, a.device_id ?? null, a.device_name ?? null, a.command, i]);
+      actions.push(act);
     }
 
-    return findById(rule.id);
+    // Return in-memory — cannot call findById() here because its global `query`
+    // uses a different connection and won't see the uncommitted transaction rows.
+    return { ...rule, conditions, actions };
   });
 }
 
