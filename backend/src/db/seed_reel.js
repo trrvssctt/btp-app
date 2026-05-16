@@ -878,28 +878,42 @@ function pad(n, len = 3) { return String(n).padStart(len, '0'); }
         );
       }
 
-      // Affecter quelques équipements à des sites
-      const eq1 = await c.query(`SELECT id FROM equipments WHERE code_inventaire='EQ-BETON-001'`);
-      const eq3 = await c.query(`SELECT id FROM equipments WHERE code_inventaire='EQ-VIBRO-001'`);
-      const eq7 = await c.query(`SELECT id FROM equipments WHERE code_inventaire='EQ-POMPE-001'`);
-      const eq11= await c.query(`SELECT id FROM equipments WHERE code_inventaire='EQ-GRNI-001'`);
-      const eq15= await c.query(`SELECT id FROM equipments WHERE code_inventaire='EQ-NIVEL-002'`);
+      // Affecter tous les équipements AFFECTE à un chantier (cohérence etat ↔ assignments)
+      const eqCodes = {
+        'EQ-BETON-001': await c.query(`SELECT id FROM equipments WHERE code_inventaire='EQ-BETON-001'`),
+        'EQ-VIBRO-001': await c.query(`SELECT id FROM equipments WHERE code_inventaire='EQ-VIBRO-001'`),
+        'EQ-PERF-001':  await c.query(`SELECT id FROM equipments WHERE code_inventaire='EQ-PERF-001'`),
+        'EQ-POMPE-001': await c.query(`SELECT id FROM equipments WHERE code_inventaire='EQ-POMPE-001'`),
+        'EQ-GENE-002':  await c.query(`SELECT id FROM equipments WHERE code_inventaire='EQ-GENE-002'`),
+        'EQ-GRNI-001':  await c.query(`SELECT id FROM equipments WHERE code_inventaire='EQ-GRNI-001'`),
+        'EQ-NIVEL-002': await c.query(`SELECT id FROM equipments WHERE code_inventaire='EQ-NIVEL-002'`),
+        'EQ-CAMN-001':  await c.query(`SELECT id FROM equipments WHERE code_inventaire='EQ-CAMN-001'`),
+        'EQ-PICK-001':  await c.query(`SELECT id FROM equipments WHERE code_inventaire='EQ-PICK-001'`),
+      };
       const chef = userIds['amadou.diallo@btp-sn.com'];
 
       const affectations = [
-        [eq1.rows[0]?.id,  siteIds['SN1-001'], chef],
-        [eq3.rows[0]?.id,  siteIds['SN4-001'], userIds['cheikh.diagne@btp-sn.com']],
-        [eq7.rows[0]?.id,  siteIds['SN3-001'], userIds['fatou.ndoye@btp-sn.com']],
-        [eq11.rows[0]?.id, siteIds['SN4-001'], userIds['cheikh.diagne@btp-sn.com']],
-        [eq15.rows[0]?.id, siteIds['SN1-001'], chef],
+        [eqCodes['EQ-BETON-001'].rows[0]?.id, siteIds['SN1-001'], chef],
+        [eqCodes['EQ-VIBRO-001'].rows[0]?.id, siteIds['SN4-001'], userIds['cheikh.diagne@btp-sn.com']],
+        [eqCodes['EQ-PERF-001'].rows[0]?.id,  siteIds['SN2-001'], userIds['elhadji.ndiaye@btp-sn.com']],
+        [eqCodes['EQ-POMPE-001'].rows[0]?.id, siteIds['SN3-001'], userIds['fatou.ndoye@btp-sn.com']],
+        [eqCodes['EQ-GENE-002'].rows[0]?.id,  siteIds['SN3-001'], userIds['fatou.ndoye@btp-sn.com']],
+        [eqCodes['EQ-GRNI-001'].rows[0]?.id,  siteIds['SN4-001'], userIds['cheikh.diagne@btp-sn.com']],
+        [eqCodes['EQ-NIVEL-002'].rows[0]?.id, siteIds['SN1-001'], chef],
+        [eqCodes['EQ-CAMN-001'].rows[0]?.id,  siteIds['SN2-001'], userIds['elhadji.ndiaye@btp-sn.com']],
+        [eqCodes['EQ-PICK-001'].rows[0]?.id,  siteIds['SN4-001'], userIds['cheikh.diagne@btp-sn.com']],
       ];
 
       for (const [eId, sId, uId] of affectations) {
         if (!eId || !sId || !uId) continue;
+        // Fermer toute affectation ouverte existante avant d'insérer (idempotence)
+        await c.query(
+          `UPDATE equipment_assignments SET date_fin = CURRENT_DATE WHERE equipment_id = $1 AND date_fin IS NULL`,
+          [eId],
+        );
         await c.query(
           `INSERT INTO equipment_assignments(equipment_id, site_id, user_id, date_debut)
-           VALUES ($1,$2,$3, CURRENT_DATE)
-           ON CONFLICT DO NOTHING`,
+           VALUES ($1,$2,$3, CURRENT_DATE)`,
           [eId, sId, uId],
         );
       }

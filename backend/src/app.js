@@ -51,6 +51,7 @@ app.use('/api/reporting', require('./routes/reportingRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/audit', require('./routes/auditRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/domotique', require('./routes/domotiqueRoutes'));
 
 app.use(notFound);
 app.use(errorHandler);
