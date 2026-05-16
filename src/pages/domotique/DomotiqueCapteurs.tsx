@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { AppLayout } from "@/components/AppLayout";
+import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Search, Wifi, WifiOff, AlertCircle, Zap, Loader2 } from "lucide-react";
+import { Plus, Search, Wifi, WifiOff, AlertCircle, Zap, Loader2, MapPin } from "lucide-react";
 import { domDeviceApi, domBuildingApi } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -37,6 +37,7 @@ function formatTime(iso: string) {
 }
 
 export default function DomotiqueCapteurs() {
+  const navigate = useNavigate();
   const [devices, setDevices]     = useState<any[]>([]);
   const [buildings, setBuildings] = useState<any[]>([]);
   const [search, setSearch]       = useState("");
@@ -46,21 +47,79 @@ export default function DomotiqueCapteurs() {
   const [withEnergy, setWithEnergy] = useState(false);
   const [loading, setLoading]     = useState(true);
 
-  const [fName, setFName]       = useState("");
-  const [fId, setFId]           = useState("");
-  const [fType, setFType]       = useState(DEVICE_TYPES[0]);
+  const [fName, setFName]         = useState("");
+  const [fId, setFId]             = useState("");
+  const [fType, setFType]         = useState(DEVICE_TYPES[0]);
   const [fCategory, setFCategory] = useState("sensor");
   const [fProtocol, setFProtocol] = useState(PROTOCOLS[0]);
   const [fLocation, setFLocation] = useState("");
   const [fBuilding, setFBuilding] = useState("");
-  const [fPower, setFPower]     = useState("");
-  const [fKwh, setFKwh]         = useState("120");
+  const [fPower, setFPower]       = useState("");
+  const [fKwh, setFKwh]           = useState("120");
+
+  // Cascading location
+  const [fTree, setFTree]         = useState<any>(null);
+  const [fTreeLoading, setFTreeLoading] = useState(false);
+  const [fFloorId, setFFloorId]   = useState("");
+  // fSpaceId = "zone:{id}" | "apt:{id}" | ""
+  const [fSpaceId, setFSpaceId]   = useState("");
+  const [fRoomId, setFRoomId]     = useState("");
 
   useEffect(() => {
     Promise.all([domDeviceApi.list(), domBuildingApi.list()])
       .then(([d, b]) => { setDevices(d); setBuildings(b); if (b[0]) setFBuilding(b[0].id); })
       .finally(() => setLoading(false));
   }, []);
+
+  // Load tree when building changes
+  useEffect(() => {
+    setFFloorId(""); setFSpaceId(""); setFRoomId(""); setFTree(null);
+    if (!fBuilding) return;
+    setFTreeLoading(true);
+    domBuildingApi.getTree(fBuilding)
+      .then(setFTree)
+      .catch(() => {})
+      .finally(() => setFTreeLoading(false));
+  }, [fBuilding]);
+
+  // Reset downstream when floor changes
+  useEffect(() => { setFSpaceId(""); setFRoomId(""); }, [fFloorId]);
+  // Reset room when space changes
+  useEffect(() => { setFRoomId(""); }, [fSpaceId]);
+
+  // Derive helpers
+  const selectedBuilding = buildings.find(b => b.id === fBuilding);
+  const selectedFloor    = fTree?.floors?.find((f: any) => f.id === fFloorId);
+
+  const spaceOptions: { value: string; label: string; kind: "zone" | "apt"; data: any }[] = selectedFloor
+    ? [
+        ...(selectedFloor.zones || []).map((z: any) => ({ value: `zone:${z.id}`, label: `Espace commun — ${z.name}`, kind: "zone" as const, data: z })),
+        ...(selectedFloor.apartments || []).map((a: any) => ({ value: `apt:${a.id}`, label: `Appartement ${a.number}`, kind: "apt" as const, data: a })),
+      ]
+    : [];
+
+  const selectedSpace = spaceOptions.find(s => s.value === fSpaceId);
+  const roomOptions: any[] = selectedSpace?.kind === "apt" ? (selectedSpace.data.rooms || []) : [];
+  const selectedRoom = roomOptions.find((r: any) => r.id === fRoomId);
+
+  // Auto-build location string
+  useEffect(() => {
+    const parts: string[] = [];
+    if (selectedBuilding) parts.push(selectedBuilding.name);
+    if (selectedFloor)    parts.push(selectedFloor.name);
+    if (selectedSpace) {
+      parts.push(selectedSpace.kind === "zone" ? selectedSpace.data.name : selectedSpace.data.number);
+    }
+    if (selectedRoom) parts.push(selectedRoom.name);
+    setFLocation(parts.join(" — "));
+  }, [fBuilding, fFloorId, fSpaceId, fRoomId]);
+
+  function resetForm() {
+    setFName(""); setFId(""); setFType(DEVICE_TYPES[0]); setFCategory("sensor");
+    setFProtocol(PROTOCOLS[0]); setFLocation(""); setFPower(""); setFKwh("120");
+    setFFloorId(""); setFSpaceId(""); setFRoomId(""); setFTree(null);
+    setWithEnergy(false);
+  }
 
   const filtered = devices.filter(d => {
     const matchSearch = !search || d.name.toLowerCase().includes(search.toLowerCase()) || d.unique_identifier.toLowerCase().includes(search.toLowerCase()) || (d.location || "").toLowerCase().includes(search.toLowerCase());
@@ -91,15 +150,15 @@ export default function DomotiqueCapteurs() {
   }
 
   if (loading) return (
-    <AppLayout>
+    <>
       <div className="flex items-center justify-center h-64 text-muted-foreground gap-2">
         <Loader2 className="w-5 h-5 animate-spin" /> Chargement…
       </div>
-    </AppLayout>
+    </>
   );
 
   return (
-    <AppLayout>
+    <>
       <PageHeader breadcrumb="Domotique" title="Capteurs & Actionneurs" description="Référentiel des équipements connectés par immeuble." />
 
       <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -122,7 +181,7 @@ export default function DomotiqueCapteurs() {
           </SelectContent>
         </Select>
         <div className="ml-auto">
-          <Button size="sm" className="gap-1.5" onClick={() => setModal(true)}><Plus className="w-4 h-4" /> Nouveau capteur</Button>
+          <Button size="sm" className="gap-1.5" onClick={() => { resetForm(); setModal(true); }}><Plus className="w-4 h-4" /> Nouveau capteur</Button>
         </div>
       </div>
 
@@ -152,7 +211,7 @@ export default function DomotiqueCapteurs() {
             </thead>
             <tbody className="divide-y divide-border">
               {filtered.map(d => (
-                <tr key={d.id} className="hover:bg-muted/30 transition-base">
+                <tr key={d.id} className="hover:bg-muted/30 transition-base cursor-pointer" onClick={() => navigate(`/domotique/capteurs/${d.id}`)}>
                   <td className="px-4 py-3 font-medium">{d.name}</td>
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{d.unique_identifier}</td>
                   <td className="px-4 py-3 text-sm">{d.type}</td>
@@ -207,7 +266,74 @@ export default function DomotiqueCapteurs() {
                 <Select value={fBuilding} onValueChange={setFBuilding}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{buildings.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent></Select>
               </div>
             </div>
-            <div className="space-y-1.5"><Label>Localisation</Label><Input placeholder="Imm. A — Étage 3 — APT-301 — Salon" value={fLocation} onChange={e => setFLocation(e.target.value)} /></div>
+            {/* Localisation en cascade */}
+            <div className="space-y-2">
+              <Label>Localisation précise</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {/* Étage */}
+                <Select
+                  value={fFloorId || "__none__"}
+                  onValueChange={v => setFFloorId(v === "__none__" ? "" : v)}
+                  disabled={!fTree && fTreeLoading}
+                >
+                  <SelectTrigger className="h-9 text-sm">
+                    {fTreeLoading
+                      ? <span className="flex items-center gap-1.5 text-muted-foreground"><Loader2 className="w-3 h-3 animate-spin" /> Chargement…</span>
+                      : <SelectValue placeholder="Étage" />}
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— Choisir un étage —</SelectItem>
+                    {(fTree?.floors || []).map((f: any) => (
+                      <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Appartement ou Zone commune */}
+                <Select
+                  value={fSpaceId || "__none__"}
+                  onValueChange={v => setFSpaceId(v === "__none__" ? "" : v)}
+                  disabled={!fFloorId || spaceOptions.length === 0}
+                >
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder={!fFloorId ? "Sélectionner un étage d'abord" : spaceOptions.length === 0 ? "Aucun espace" : "Appartement / Zone"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— Choisir un espace —</SelectItem>
+                    {spaceOptions.map(s => (
+                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Pièce (uniquement si appartement sélectionné) */}
+              {selectedSpace?.kind === "apt" && (
+                <Select
+                  value={fRoomId || "__none__"}
+                  onValueChange={v => setFRoomId(v === "__none__" ? "" : v)}
+                  disabled={roomOptions.length === 0}
+                >
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder={roomOptions.length === 0 ? "Aucune pièce configurée" : "Pièce (optionnel)"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— Toute l'appartement —</SelectItem>
+                    {roomOptions.map((r: any) => (
+                      <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
+              {/* Aperçu de la localisation générée */}
+              {fLocation && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
+                  <MapPin className="w-3 h-3 shrink-0 text-primary" />
+                  <span className="font-mono">{fLocation}</span>
+                </div>
+              )}
+            </div>
             <div className="pt-2 border-t border-border">
               <div className="flex items-center justify-between mb-3">
                 <div><p className="text-sm font-medium">Profil énergétique</p><p className="text-xs text-muted-foreground">Si l'équipement consomme</p></div>
@@ -227,6 +353,6 @@ export default function DomotiqueCapteurs() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </AppLayout>
+    </>
   );
 }

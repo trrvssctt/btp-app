@@ -1,4 +1,3 @@
-import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { Truck, Package, ArrowDown, ArrowUp, RotateCcw, Sliders, Loader2 } from "lucide-react";
 import { stockMovementsApi } from "@/lib/api";
@@ -34,7 +33,7 @@ export default function MouvementsPage() {
   }, [refreshKey]);
 
   return (
-    <AppLayout>
+    <>
       <PageHeader
         breadcrumb="Opérations"
         title="Journal des mouvements"
@@ -93,6 +92,6 @@ export default function MouvementsPage() {
           </table>
         )}
       </div>
-    </AppLayout>
+    </>
   );
 }

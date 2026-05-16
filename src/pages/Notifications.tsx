@@ -1,4 +1,3 @@
-import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -54,7 +53,7 @@ export default function NotificationsPage() {
   });
 
   return (
-    <AppLayout>
+    <>
       <PageHeader
         breadcrumb="Notifications"
         title="Centre de notifications"
@@ -120,6 +119,6 @@ export default function NotificationsPage() {
           </TabsContent>
         </Tabs>
       )}
-    </AppLayout>
+    </>
   );
 }

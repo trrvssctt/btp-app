@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -33,7 +32,7 @@ export default function ReceptionsPage() {
   );
 
   return (
-    <AppLayout>
+    <>
       <PageHeader
         breadcrumb="Approvisionnement"
         title="Réceptions fournisseur"
@@ -74,6 +73,6 @@ export default function ReceptionsPage() {
           </tbody>
         </table>
       </div>
-    </AppLayout>
+    </>
   );
 }

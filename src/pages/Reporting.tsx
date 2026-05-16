@@ -1,4 +1,3 @@
-import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -255,21 +254,21 @@ export default function ReportingPage() {
 
   if (loading) {
     return (
-      <AppLayout>
+      <>
         <PageHeader breadcrumb="Pilotage" title="Reporting & indicateurs" description="Tableau de bord agrégé par projet et par fournisseur." />
         <div className="flex items-center justify-center py-20 text-muted-foreground gap-2">
           <Loader2 className="w-4 h-4 animate-spin" /> Chargement des indicateurs…
         </div>
-      </AppLayout>
+      </>
     );
   }
 
   if (!data) {
     return (
-      <AppLayout>
+      <>
         <PageHeader breadcrumb="Pilotage" title="Reporting & indicateurs" description="Tableau de bord agrégé par projet et par fournisseur." />
         <p className="text-center py-16 text-muted-foreground">Impossible de charger les données de reporting.</p>
-      </AppLayout>
+      </>
     );
   }
 
@@ -298,7 +297,7 @@ export default function ReportingPage() {
   const articleUsage = topArticles.map((a: any) => ({ nom: a.code, valeur: Number(a.valeur) }));
 
   return (
-    <AppLayout>
+    <>
       <div className="flex items-start justify-between flex-wrap gap-3 mb-6">
         <PageHeader
           breadcrumb="Pilotage"
@@ -497,6 +496,6 @@ export default function ReportingPage() {
           </div>
         </div>
       </div>
-    </AppLayout>
+    </>
   );
 }

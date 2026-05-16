@@ -1,4 +1,3 @@
-import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Input } from "@/components/ui/input";
@@ -182,7 +181,7 @@ export default function EquipementsPage() {
   const historiqueEquipement = historiqueId ? equipements.find((e) => e.id === historiqueId) : null;
 
   return (
-    <AppLayout>
+    <>
       <PageHeader
         breadcrumb="Référentiels"
         title="Parc équipements"
@@ -419,6 +418,6 @@ export default function EquipementsPage() {
           onClose={() => setHistoriqueId(null)}
         />
       )}
-    </AppLayout>
+    </>
   );
 }

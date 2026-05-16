@@ -1,4 +1,3 @@
-import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,7 +36,7 @@ export default function ParametresPage() {
   const { enabled: domotiqueEnabled, setEnabled: setDomotiqueEnabled } = useDomotique();
 
   return (
-    <AppLayout>
+    <>
       <PageHeader
         breadcrumb="Pilotage"
         title="Paramètres"
@@ -290,6 +289,6 @@ export default function ParametresPage() {
           </div>
         </TabsContent>
       </Tabs>
-    </AppLayout>
+    </>
   );
 }

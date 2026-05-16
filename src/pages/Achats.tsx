@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -39,7 +38,7 @@ export default function AchatsPage() {
   );
 
   return (
-    <AppLayout>
+    <>
       <PageHeader
         breadcrumb="Approvisionnement"
         title="Achats & commandes"
@@ -76,6 +75,6 @@ export default function AchatsPage() {
           </tbody>
         </table>
       </div>
-    </AppLayout>
+    </>
   );
 }

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -31,7 +30,7 @@ export default function TransfertsPage() {
   );
 
   return (
-    <AppLayout>
+    <>
       <PageHeader
         breadcrumb="Opérations"
         title="Transferts inter-dépôts"
@@ -72,6 +71,6 @@ export default function TransfertsPage() {
           </tbody>
         </table>
       </div>
-    </AppLayout>
+    </>
   );
 }

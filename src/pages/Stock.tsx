@@ -1,4 +1,3 @@
-import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Input } from "@/components/ui/input";
@@ -189,7 +188,7 @@ export default function StockPage() {
   );
 
   return (
-    <AppLayout>
+    <>
       <PageHeader
         breadcrumb="Opérations"
         title="État du stock"
@@ -526,6 +525,6 @@ export default function StockPage() {
           <span className="w-0.5 h-3.5 bg-foreground/40 inline-block" />Marqueur seuil
         </span>
       </div>
-    </AppLayout>
+    </>
   );
 }

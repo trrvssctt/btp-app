@@ -1,4 +1,3 @@
-import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -64,7 +63,7 @@ export default function DemandesPage() {
   }, [data, filter, search]);
 
   return (
-    <AppLayout>
+    <>
       <PageHeader
         breadcrumb="Opérations"
         title="Demandes de besoin"
@@ -138,6 +137,6 @@ export default function DemandesPage() {
           </table>
         </div>
       </div>
-    </AppLayout>
+    </>
   );
 }

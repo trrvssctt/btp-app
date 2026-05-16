@@ -1,4 +1,3 @@
-import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { Input } from "@/components/ui/input";
 import {
@@ -50,7 +49,7 @@ export default function AuditPage() {
   });
 
   return (
-    <AppLayout>
+    <>
       <PageHeader
         breadcrumb="Pilotage"
         title="Journal d'audit"
@@ -147,6 +146,6 @@ export default function AuditPage() {
           {filtered.length} entrée{filtered.length > 1 ? "s" : ""} affichée{filtered.length > 1 ? "s" : ""} sur {entries.length}
         </div>
       </div>
-    </AppLayout>
+    </>
   );
 }

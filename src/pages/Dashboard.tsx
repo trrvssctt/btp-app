@@ -1,4 +1,3 @@
-import { AppLayout } from "@/components/AppLayout";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -230,17 +229,17 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <AppLayout>
+      <>
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-muted-foreground">
           <Loader2 className="w-8 h-8 animate-spin opacity-40" />
           <p className="text-sm">Chargement de votre espace…</p>
         </div>
-      </AppLayout>
+      </>
     );
   }
 
   return (
-    <AppLayout>
+    <>
 
       {/* ── Hero banner ────────────────────────────────────── */}
       <div className="relative rounded-2xl overflow-hidden mb-6 bg-gradient-to-br from-slate-800 via-slate-700 to-slate-600 shadow-lg">
@@ -723,6 +722,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-    </AppLayout>
+    </>
   );
 }

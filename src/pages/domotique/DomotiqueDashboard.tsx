@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -66,15 +65,15 @@ export default function DomotiqueDashboard() {
   }
 
   if (loading) return (
-    <AppLayout>
+    <>
       <div className="flex items-center justify-center h-64 text-muted-foreground gap-2">
         <Loader2 className="w-5 h-5 animate-spin" /> Chargement…
       </div>
-    </AppLayout>
+    </>
   );
 
   return (
-    <AppLayout>
+    <>
       <PageHeader breadcrumb="Domotique" title="Supervision" description="Vue temps réel de l'ensemble des immeubles connectés." />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -188,6 +187,6 @@ export default function DomotiqueDashboard() {
           </div>
         </div>
       </div>
-    </AppLayout>
+    </>
   );
 }

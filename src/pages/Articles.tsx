@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { articles as mockArticles } from "@/data/mock";
@@ -39,7 +38,7 @@ export default function ArticlesPage() {
   );
 
   return (
-    <AppLayout>
+    <>
       <PageHeader
         breadcrumb="Référentiels"
         title="Articles"
@@ -77,6 +76,6 @@ export default function ArticlesPage() {
           </tbody>
         </table>
       </div>
-    </AppLayout>
+    </>
   );
 }

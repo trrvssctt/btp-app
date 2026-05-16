@@ -134,13 +134,6 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        <SidebarGroup>
-          {!collapsed && <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 px-3">Pilotage</SidebarGroupLabel>}
-          <SidebarGroupContent>
-            <SidebarMenu>{visible(pilotage).map(renderItem)}</SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
         {domotiqueEnabled && isAdmin && (
           <SidebarGroup>
             {!collapsed && (
@@ -153,6 +146,13 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
+
+        <SidebarGroup>
+          {!collapsed && <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 px-3">Pilotage</SidebarGroupLabel>}
+          <SidebarGroupContent>
+            <SidebarMenu>{visible(pilotage).map(renderItem)}</SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-3 space-y-2">

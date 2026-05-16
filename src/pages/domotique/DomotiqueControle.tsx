@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -83,15 +82,15 @@ export default function DomotiqueControle() {
   }
 
   if (loading) return (
-    <AppLayout>
+    <>
       <div className="flex items-center justify-center h-64 text-muted-foreground gap-2">
         <Loader2 className="w-5 h-5 animate-spin" /> Chargement…
       </div>
-    </AppLayout>
+    </>
   );
 
   return (
-    <AppLayout>
+    <>
       <PageHeader breadcrumb="Domotique" title="Contrôle à distance" description="Envoyez des commandes aux actionneurs depuis l'interface." />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
@@ -192,6 +191,6 @@ export default function DomotiqueControle() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </AppLayout>
+    </>
   );
 }

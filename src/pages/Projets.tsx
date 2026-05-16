@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Progress } from "@/components/ui/progress";
@@ -86,7 +85,7 @@ export default function ProjetsPage() {
   }).length;
 
   return (
-    <AppLayout>
+    <>
       <PageHeader
         breadcrumb="Référentiels"
         title="Projets & chantiers"
@@ -276,6 +275,6 @@ export default function ProjetsPage() {
           );
         })}
       </div>
-    </AppLayout>
+    </>
   );
 }

@@ -1,4 +1,3 @@
-import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -125,20 +124,20 @@ export default function DemandeDetail() {
 
   if (loading) {
     return (
-      <AppLayout>
+      <>
         <div className="flex items-center justify-center py-32 text-muted-foreground gap-2">
           <Loader2 className="w-5 h-5 animate-spin" /> Chargement…
         </div>
-      </AppLayout>
+      </>
     );
   }
 
   if (!d) {
     return (
-      <AppLayout>
+      <>
         <p className="text-muted-foreground">Demande introuvable.</p>
         <Button asChild variant="link"><Link to="/demandes">Retour</Link></Button>
-      </AppLayout>
+      </>
     );
   }
 
@@ -157,7 +156,7 @@ export default function DemandeDetail() {
   };
 
   return (
-    <AppLayout>
+    <>
       <Button asChild variant="ghost" size="sm" className="gap-1.5 mb-4 -ml-2">
         <Link to="/demandes"><ArrowLeft className="w-4 h-4" /> Retour aux demandes</Link>
       </Button>
@@ -390,6 +389,6 @@ export default function DemandeDetail() {
           </div>
         </aside>
       </div>
-    </AppLayout>
+    </>
   );
 }

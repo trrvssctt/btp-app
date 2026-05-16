@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -88,29 +87,29 @@ export default function StockDetail() {
 
   if (loading) {
     return (
-      <AppLayout>
+      <>
         <div className="flex items-center justify-center py-32 text-muted-foreground gap-3">
           <Loader2 className="w-5 h-5 animate-spin" /> Chargement des détails…
         </div>
-      </AppLayout>
+      </>
     );
   }
 
   if (error || !stock) {
     return (
-      <AppLayout>
+      <>
         <div className="rounded-2xl bg-card border border-border p-8 text-center text-destructive">
           <p className="mb-4">{error ?? "Détail du stock introuvable."}</p>
           <Button asChild>
             <Link to="/stock">Retour au stock</Link>
           </Button>
         </div>
-      </AppLayout>
+      </>
     );
   }
 
   return (
-    <AppLayout>
+    <>
       <div className="mb-4">
         <Button asChild variant="ghost" size="sm" className="gap-1.5">
           <Link to="/stock"><ArrowLeft className="w-4 h-4" /> Retour au stock</Link>
@@ -283,6 +282,6 @@ export default function StockDetail() {
           </div>
         </aside>
       </div>
-    </AppLayout>
+    </>
   );
 }

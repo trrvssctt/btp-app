@@ -5,7 +5,6 @@ import {
   ShoppingCart, ClipboardCheck, TrendingUp, MapPin, User, Calendar,
   AlertCircle, ChevronRight, BarChart3, Wallet,
 } from "lucide-react";
-import { AppLayout } from "@/components/AppLayout";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -87,23 +86,23 @@ export default function ProjetDetail() {
 
   if (loading) {
     return (
-      <AppLayout>
+      <>
         <div className="flex items-center justify-center py-32 text-muted-foreground gap-2">
           <Loader2 className="w-5 h-5 animate-spin" /> Chargement du projet…
         </div>
-      </AppLayout>
+      </>
     );
   }
 
   if (error || !data) {
     return (
-      <AppLayout>
+      <>
         <div className="flex items-center gap-3 py-16 justify-center text-muted-foreground">
           <AlertCircle className="w-5 h-5 text-destructive" />
           <span>{error ?? "Projet introuvable."}</span>
         </div>
         <div className="text-center"><Link to="/projets" className="text-sm text-accent underline">← Retour aux projets</Link></div>
-      </AppLayout>
+      </>
     );
   }
 
@@ -121,7 +120,7 @@ export default function ProjetDetail() {
   const sites: any[] = data.sites ?? [];
 
   return (
-    <AppLayout>
+    <>
       {/* Back */}
       <Link
         to="/projets"
@@ -559,6 +558,6 @@ export default function ProjetDetail() {
           )}
         </TabsContent>
       </Tabs>
-    </AppLayout>
+    </>
   );
 }

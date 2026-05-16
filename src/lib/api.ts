@@ -217,14 +217,23 @@ export const reportingApi = {
 const dom = "/domotique";
 
 export const domBuildingApi = {
-  list:          ()         => api.get<{ data: any[] }>(`${dom}/buildings`).then(r => r.data.data),
-  getTree:       (id: string) => api.get<{ data: any }>(`${dom}/buildings/${id}/tree`).then(r => r.data.data),
-  create:        (b: any)   => api.post<{ data: any }>(`${dom}/buildings`, b).then(r => r.data.data),
-  update:        (id: string, b: any) => api.put<{ data: any }>(`${dom}/buildings/${id}`, b).then(r => r.data.data),
-  createFloor:   (f: any)   => api.post<{ data: any }>(`${dom}/floors`, f).then(r => r.data.data),
-  createZone:    (z: any)   => api.post<{ data: any }>(`${dom}/zones`, z).then(r => r.data.data),
-  createApartment:(a: any)  => api.post<{ data: any }>(`${dom}/apartments`, a).then(r => r.data.data),
-  createRoom:    (r: any)   => api.post<{ data: any }>(`${dom}/rooms`, r).then(r => r.data.data),
+  list:             ()                   => api.get<{ data: any[] }>(`${dom}/buildings`).then(r => r.data.data),
+  getTree:          (id: string)         => api.get<{ data: any }>(`${dom}/buildings/${id}/tree`).then(r => r.data.data),
+  create:           (b: any)             => api.post<{ data: any }>(`${dom}/buildings`, b).then(r => r.data.data),
+  update:           (id: string, b: any) => api.put<{ data: any }>(`${dom}/buildings/${id}`, b).then(r => r.data.data),
+  remove:           (id: string)         => api.delete(`${dom}/buildings/${id}`),
+  createFloor:      (f: any)             => api.post<{ data: any }>(`${dom}/floors`, f).then(r => r.data.data),
+  updateFloor:      (id: string, f: any) => api.put<{ data: any }>(`${dom}/floors/${id}`, f).then(r => r.data.data),
+  deleteFloor:      (id: string)         => api.delete(`${dom}/floors/${id}`),
+  createZone:       (z: any)             => api.post<{ data: any }>(`${dom}/zones`, z).then(r => r.data.data),
+  updateZone:       (id: string, z: any) => api.put<{ data: any }>(`${dom}/zones/${id}`, z).then(r => r.data.data),
+  deleteZone:       (id: string)         => api.delete(`${dom}/zones/${id}`),
+  createApartment:  (a: any)             => api.post<{ data: any }>(`${dom}/apartments`, a).then(r => r.data.data),
+  updateApartment:  (id: string, a: any) => api.put<{ data: any }>(`${dom}/apartments/${id}`, a).then(r => r.data.data),
+  deleteApartment:  (id: string)         => api.delete(`${dom}/apartments/${id}`),
+  createRoom:       (r: any)             => api.post<{ data: any }>(`${dom}/rooms`, r).then(r => r.data.data),
+  updateRoom:       (id: string, r: any) => api.put<{ data: any }>(`${dom}/rooms/${id}`, r).then(r => r.data.data),
+  deleteRoom:       (id: string)         => api.delete(`${dom}/rooms/${id}`),
 };
 
 export const domDeviceApi = {

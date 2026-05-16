@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -38,11 +37,11 @@ export default function DomotiqueEnergie() {
   }, []);
 
   if (loading) return (
-    <AppLayout>
+    <>
       <div className="flex items-center justify-center h-64 text-muted-foreground gap-2">
         <Loader2 className="w-5 h-5 animate-spin" /> Chargement…
       </div>
-    </AppLayout>
+    </>
   );
 
   const topConsumers: any[] = energy?.top_consumers || [];
@@ -52,7 +51,7 @@ export default function DomotiqueEnergie() {
   const energyAlerts = alerts.filter(a => a.severity !== "info");
 
   return (
-    <AppLayout>
+    <>
       <PageHeader breadcrumb="Domotique" title="Énergie intelligente" description="Consommation, coûts, projections et optimisation." />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -165,6 +164,6 @@ export default function DomotiqueEnergie() {
           </table>
         </div>
       </div>
-    </AppLayout>
+    </>
   );
 }
