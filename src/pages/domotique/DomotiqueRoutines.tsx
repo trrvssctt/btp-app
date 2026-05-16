@@ -225,7 +225,7 @@ export default function DomotiqueRoutines() {
       await domRuleApi.create({
         name: fName, description: fDesc,
         conditions: fConditions.filter(c => c.device_id || c.metric),
-        actions:    fActions.filter(a => a.device_id || a.command),
+        actions:    fActions.filter(a => a.device_id && a.command),
       });
       const fresh = await domRuleApi.list();
       setRules((fresh || []).filter(Boolean));
