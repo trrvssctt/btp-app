@@ -110,13 +110,6 @@ export default function DomotiqueEnergie() {
             })}
           </div>
 
-          <div className="mt-6 pt-4 border-t border-border">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Formule</p>
-            <div className="bg-muted rounded-lg p-3 text-xs font-mono text-muted-foreground space-y-1">
-              <p>kWh = puissance(W) × durée(h) / 1000</p>
-              <p>Coût = kWh × 120 FCFA</p>
-            </div>
-          </div>
         </div>
       </div>
 

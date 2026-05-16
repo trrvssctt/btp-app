@@ -608,13 +608,6 @@ export default function DomotiqueCapteurDetail() {
                     </StatusBadge>
                   </div>
                 </div>
-                <div className="mt-5 pt-4 border-t border-border">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Formule de calcul</p>
-                  <div className="bg-muted rounded-lg p-3 text-xs font-mono text-muted-foreground space-y-1">
-                    <p>kWh/jour = {device.nominal_power_watt}W × 8h / 1000 = {(device.nominal_power_watt * 8 / 1000).toFixed(3)} kWh</p>
-                    <p>Coût/jour = {(device.nominal_power_watt * 8 / 1000).toFixed(3)} kWh × {device.kwh_price ?? 120} FCFA = {fmt(device.nominal_power_watt * 8 / 1000 * (device.kwh_price || 120))} FCFA</p>
-                  </div>
-                </div>
               </div>
             </>
           )}

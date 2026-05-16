@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -7,32 +8,42 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { DomotiqueProvider } from "@/contexts/DomotiqueContext";
 import { AppLayoutRoute } from "@/components/AppLayoutRoute";
 import { useAuth } from "@/contexts/AuthContext";
-import Login from "./pages/Login.tsx";
-import DomotiqueDashboard from "./pages/domotique/DomotiqueDashboard.tsx";
-import DomotiqueBatiments from "./pages/domotique/DomotiqueBatiments.tsx";
-import DomotiqueCapteurs from "./pages/domotique/DomotiqueCapteurs.tsx";
-import DomotiqueControle from "./pages/domotique/DomotiqueControle.tsx";
-import DomotiqueEnergie from "./pages/domotique/DomotiqueEnergie.tsx";
-import DomotiqueRoutines from "./pages/domotique/DomotiqueRoutines.tsx";
-import DomotiqueCapteurDetail from "./pages/domotique/DomotiqueCapteurDetail.tsx";
-import Index from "./pages/Index.tsx";
-import NotFound from "./pages/NotFound.tsx";
-import Demandes from "./pages/Demandes.tsx";
-import DemandeDetail from "./pages/DemandeDetail.tsx";
-import Stock from "./pages/Stock.tsx";
-import StockDetail from "./pages/StockDetail.tsx";
-import Mouvements from "./pages/Mouvements.tsx";
-import Transferts from "./pages/Transferts.tsx";
-import Achats from "./pages/Achats.tsx";
-import Receptions from "./pages/Receptions.tsx";
-import Projets from "./pages/Projets.tsx";
-import ProjetDetail from "./pages/ProjetDetail.tsx";
-import Articles from "./pages/Articles.tsx";
-import Equipements from "./pages/Equipements.tsx";
-import Reporting from "./pages/Reporting.tsx";
-import Parametres from "./pages/Parametres.tsx";
-import Audit from "./pages/Audit.tsx";
-import Notifications from "./pages/Notifications.tsx";
+import { Loader2 } from "lucide-react";
+
+const Login                 = lazy(() => import("./pages/Login.tsx"));
+const DomotiqueDashboard    = lazy(() => import("./pages/domotique/DomotiqueDashboard.tsx"));
+const DomotiqueBatiments    = lazy(() => import("./pages/domotique/DomotiqueBatiments.tsx"));
+const DomotiqueCapteurs     = lazy(() => import("./pages/domotique/DomotiqueCapteurs.tsx"));
+const DomotiqueControle     = lazy(() => import("./pages/domotique/DomotiqueControle.tsx"));
+const DomotiqueEnergie      = lazy(() => import("./pages/domotique/DomotiqueEnergie.tsx"));
+const DomotiqueRoutines     = lazy(() => import("./pages/domotique/DomotiqueRoutines.tsx"));
+const DomotiqueCapteurDetail= lazy(() => import("./pages/domotique/DomotiqueCapteurDetail.tsx"));
+const Index                 = lazy(() => import("./pages/Index.tsx"));
+const NotFound              = lazy(() => import("./pages/NotFound.tsx"));
+const Demandes              = lazy(() => import("./pages/Demandes.tsx"));
+const DemandeDetail         = lazy(() => import("./pages/DemandeDetail.tsx"));
+const Stock                 = lazy(() => import("./pages/Stock.tsx"));
+const StockDetail           = lazy(() => import("./pages/StockDetail.tsx"));
+const Mouvements            = lazy(() => import("./pages/Mouvements.tsx"));
+const Transferts            = lazy(() => import("./pages/Transferts.tsx"));
+const Achats                = lazy(() => import("./pages/Achats.tsx"));
+const Receptions            = lazy(() => import("./pages/Receptions.tsx"));
+const Projets               = lazy(() => import("./pages/Projets.tsx"));
+const ProjetDetail          = lazy(() => import("./pages/ProjetDetail.tsx"));
+const Articles              = lazy(() => import("./pages/Articles.tsx"));
+const Equipements           = lazy(() => import("./pages/Equipements.tsx"));
+const Reporting             = lazy(() => import("./pages/Reporting.tsx"));
+const Parametres            = lazy(() => import("./pages/Parametres.tsx"));
+const Audit                 = lazy(() => import("./pages/Audit.tsx"));
+const Notifications         = lazy(() => import("./pages/Notifications.tsx"));
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 const queryClient = new QueryClient();
 
@@ -51,6 +62,7 @@ const App = () => (
       <BrowserRouter>
         <DomotiqueProvider>
           <AuthProvider>
+            <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/login" element={<Login />} />
 
@@ -84,6 +96,7 @@ const App = () => (
 
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </Suspense>
           </AuthProvider>
         </DomotiqueProvider>
       </BrowserRouter>
