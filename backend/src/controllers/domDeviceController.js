@@ -12,6 +12,7 @@ const deviceSchema = z.object({
   category:          z.enum(['sensor', 'actuator', 'hybrid']).optional(),
   protocol:          z.string().max(50).optional(),
   status:            z.enum(['online', 'offline', 'alert']).optional(),
+  actif:             z.boolean().optional(),
   location:          z.string().max(300).optional().nullable(),
   building_id:       z.string().uuid().optional().nullable(),
   floor_id:          z.string().uuid().optional().nullable(),
