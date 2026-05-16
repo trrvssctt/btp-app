@@ -190,7 +190,7 @@ export default function DomotiqueRoutines() {
 
   useEffect(() => {
     Promise.all([domRuleApi.list(), domDeviceApi.list(), domBuildingApi.list()])
-      .then(([r, d, b]) => { setRules(r); setDevices(d); setBuildings(b); })
+      .then(([r, d, b]) => { setRules((r || []).filter(Boolean)); setDevices(d); setBuildings(b); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -222,12 +222,13 @@ export default function DomotiqueRoutines() {
   async function handleSubmit() {
     if (!fName.trim()) { toast.error("Nom requis"); return; }
     try {
-      const rule = await domRuleApi.create({
+      await domRuleApi.create({
         name: fName, description: fDesc,
         conditions: fConditions.filter(c => c.device_id || c.metric),
         actions:    fActions.filter(a => a.device_id || a.command),
       });
-      setRules(p => [...p, rule]);
+      const fresh = await domRuleApi.list();
+      setRules((fresh || []).filter(Boolean));
       toast.success(`Routine "${fName}" créée`);
       setModal(false);
     } catch { toast.error("Erreur lors de la création"); }
