@@ -54,6 +54,44 @@ async function create(r) {
   });
 }
 
+async function update(id, r) {
+  return withTransaction(async (client) => {
+    const { rows: [rule] } = await client.query(`
+      UPDATE dom_automation_rules
+         SET name = $2, description = $3, enabled = $4, priority = $5, updated_at = now()
+       WHERE id = $1 RETURNING *
+    `, [id, r.name, r.description ?? null, r.enabled ?? true, r.priority ?? 0]);
+    if (!rule) return null;
+
+    await client.query(`DELETE FROM dom_rule_conditions WHERE rule_id = $1`, [id]);
+    await client.query(`DELETE FROM dom_rule_actions    WHERE rule_id = $1`, [id]);
+
+    const conditions = [];
+    for (const [i, c] of (r.conditions ?? []).entries()) {
+      const { rows: [cond] } = await client.query(`
+        INSERT INTO dom_rule_conditions(rule_id, device_id, device_name, metric, operator, value, duration_min, sort_order)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *
+      `, [id, c.device_id ?? null, c.device_name ?? null, c.metric, c.operator, String(c.value), c.duration_min ?? null, i]);
+      conditions.push(cond);
+    }
+
+    const actions = [];
+    for (const [i, a] of (r.actions ?? []).entries()) {
+      const { rows: [act] } = await client.query(`
+        INSERT INTO dom_rule_actions(rule_id, device_id, device_name, command, sort_order)
+        VALUES($1,$2,$3,$4,$5) RETURNING *
+      `, [id, a.device_id ?? null, a.device_name ?? null, a.command, i]);
+      actions.push(act);
+    }
+
+    return { ...rule, conditions, actions };
+  });
+}
+
+async function remove(id) {
+  await query(`DELETE FROM dom_automation_rules WHERE id = $1`, [id]);
+}
+
 async function toggleEnabled(id, enabled) {
   const { rows } = await query(`
     UPDATE dom_automation_rules SET enabled = $2, updated_at = now() WHERE id = $1 RETURNING *
@@ -69,4 +107,4 @@ async function recordTrigger(id) {
   `, [id]);
 }
 
-module.exports = { list, findById, create, toggleEnabled, recordTrigger };
+module.exports = { list, findById, create, update, remove, toggleEnabled, recordTrigger };

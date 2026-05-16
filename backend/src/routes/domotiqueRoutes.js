@@ -52,11 +52,13 @@ router.get('/alerts',             alert.list);
 router.put('/alerts/:id/resolve', alert.resolve);
 
 // ── Routines ───────────────────────────────────────────────────────────────
-router.get ('/rules',              rule.list);
-router.get ('/rules/:id',          rule.get);
-router.post('/rules',              rule.create);
-router.patch('/rules/:id/enabled', rule.toggle);
-router.post('/rules/:id/trigger',  rule.trigger);
+router.get   ('/rules',              rule.list);
+router.get   ('/rules/:id',          rule.get);
+router.post  ('/rules',              rule.create);
+router.put   ('/rules/:id',          rule.update);
+router.delete('/rules/:id',          rule.remove);
+router.patch ('/rules/:id/enabled',  rule.toggle);
+router.post  ('/rules/:id/trigger',  rule.trigger);
 
 // ── Énergie ────────────────────────────────────────────────────────────────
 router.get('/energy', energy.summary);
