@@ -1,11 +1,12 @@
 const { query, withTransaction } = require('../db/pool');
 
-async function list({ article_id, depot_id, type_mouvement } = {}) {
+async function list({ article_id, depot_id, type_mouvement, limit = 200 } = {}) {
   const params = [];
   const where = [];
   if (article_id) { params.push(article_id); where.push(`sm.article_id = $${params.length}`); }
   if (depot_id) { params.push(depot_id); where.push(`sm.depot_id = $${params.length}`); }
   if (type_mouvement) { params.push(type_mouvement); where.push(`sm.type_mouvement = $${params.length}`); }
+  params.push(limit);
 
   const { rows } = await query(
     `SELECT sm.*,
@@ -19,7 +20,8 @@ async function list({ article_id, depot_id, type_mouvement } = {}) {
        LEFT JOIN sites s ON s.id = sm.site_id
        LEFT JOIN users u ON u.id = sm.user_id
       ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-      ORDER BY sm.created_at DESC`,
+      ORDER BY sm.created_at DESC
+      LIMIT $${params.length}`,
     params,
   );
   return rows;

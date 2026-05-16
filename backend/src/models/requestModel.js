@@ -1,11 +1,12 @@
 const { query, withTransaction } = require('../db/pool');
 
-async function list({ statut, project_id, requester_id } = {}) {
+async function list({ statut, project_id, requester_id, limit = 500 } = {}) {
   const params = [];
   const where = [];
   if (statut) { params.push(statut); where.push(`r.statut = $${params.length}`); }
   if (project_id) { params.push(project_id); where.push(`r.project_id = $${params.length}`); }
   if (requester_id) { params.push(requester_id); where.push(`r.requester_id = $${params.length}`); }
+  params.push(limit);
 
   const { rows } = await query(
     `SELECT r.*,
@@ -20,7 +21,8 @@ async function list({ statut, project_id, requester_id } = {}) {
        LEFT JOIN (SELECT request_id, COUNT(*) FROM request_lines GROUP BY request_id) l
               ON l.request_id = r.id
       ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-      ORDER BY r.created_at DESC`,
+      ORDER BY r.created_at DESC
+      LIMIT $${params.length}`,
     params,
   );
   return rows;
