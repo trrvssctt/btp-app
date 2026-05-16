@@ -212,3 +212,56 @@ export const reportingApi = {
       };
     }>("/reporting").then((r) => r.data.data),
 };
+
+// ─── Domotique API ────────────────────────────────────────────────────────────
+const dom = "/domotique";
+
+export const domBuildingApi = {
+  list:          ()         => api.get<{ data: any[] }>(`${dom}/buildings`).then(r => r.data.data),
+  getTree:       (id: string) => api.get<{ data: any }>(`${dom}/buildings/${id}/tree`).then(r => r.data.data),
+  create:        (b: any)   => api.post<{ data: any }>(`${dom}/buildings`, b).then(r => r.data.data),
+  update:        (id: string, b: any) => api.put<{ data: any }>(`${dom}/buildings/${id}`, b).then(r => r.data.data),
+  createFloor:   (f: any)   => api.post<{ data: any }>(`${dom}/floors`, f).then(r => r.data.data),
+  createZone:    (z: any)   => api.post<{ data: any }>(`${dom}/zones`, z).then(r => r.data.data),
+  createApartment:(a: any)  => api.post<{ data: any }>(`${dom}/apartments`, a).then(r => r.data.data),
+  createRoom:    (r: any)   => api.post<{ data: any }>(`${dom}/rooms`, r).then(r => r.data.data),
+};
+
+export const domDeviceApi = {
+  list:   (params?: { building_id?: string; type?: string; category?: string; status?: string; search?: string }) =>
+            api.get<{ data: any[] }>(`${dom}/devices`, { params }).then(r => r.data.data),
+  get:    (id: string) => api.get<{ data: any }>(`${dom}/devices/${id}`).then(r => r.data.data),
+  create: (d: any)     => api.post<{ data: any }>(`${dom}/devices`, d).then(r => r.data.data),
+  update: (id: string, d: any) => api.put<{ data: any }>(`${dom}/devices/${id}`, d).then(r => r.data.data),
+  sendCommand: (id: string, cmd: any) =>
+    api.post<{ data: any }>(`${dom}/devices/${id}/command`, cmd).then(r => r.data.data),
+};
+
+export const domReadingApi = {
+  list: (params?: { device_id?: string; limit?: number; since?: string }) =>
+    api.get<{ data: any[] }>(`${dom}/readings`, { params }).then(r => r.data.data),
+  ingest: (r: any) => api.post<{ data: any }>(`${dom}/readings`, r).then(r => r.data.data),
+};
+
+export const domCommandApi = {
+  list: (params?: { device_id?: string; limit?: number }) =>
+    api.get<{ data: any[] }>(`${dom}/commands`, { params }).then(r => r.data.data),
+};
+
+export const domAlertApi = {
+  list:    (params?: { resolved?: boolean; severity?: string }) =>
+    api.get<{ data: any[] }>(`${dom}/alerts`, { params }).then(r => r.data.data),
+  resolve: (id: string) => api.put<{ data: any }>(`${dom}/alerts/${id}/resolve`).then(r => r.data.data),
+};
+
+export const domRuleApi = {
+  list:   ()             => api.get<{ data: any[] }>(`${dom}/rules`).then(r => r.data.data),
+  create: (r: any)       => api.post<{ data: any }>(`${dom}/rules`, r).then(r => r.data.data),
+  toggle: (id: string, enabled: boolean) =>
+    api.patch<{ data: any }>(`${dom}/rules/${id}/enabled`, { enabled }).then(r => r.data.data),
+  trigger: (id: string)  => api.post<{ data: any }>(`${dom}/rules/${id}/trigger`).then(r => r.data.data),
+};
+
+export const domEnergyApi = {
+  summary: () => api.get<{ data: any }>(`${dom}/energy`).then(r => r.data.data),
+};

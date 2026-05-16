@@ -1,10 +1,11 @@
 import {
   LayoutDashboard, FileText, Package, Truck, ShoppingCart, ClipboardCheck,
   Warehouse, HardHat, Wrench, BarChart3, Settings, Building2, ArrowLeftRight,
-  ShieldCheck, Bell, LogOut,
+  ShieldCheck, Bell, LogOut, Wifi, Activity, Zap, Bot, MonitorSpeaker,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useDomotique } from "@/contexts/DomotiqueContext";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter,
@@ -45,11 +46,21 @@ const pilotage: NavItem[] = [
   { title: "Paramètres", url: "/parametres", icon: Settings, roles: ["ADMIN"] },
 ];
 
+const domotiqueItems: NavItem[] = [
+  { title: "Supervision", url: "/domotique", icon: Activity, end: true },
+  { title: "Bâtiments", url: "/domotique/batiments", icon: Building2 },
+  { title: "Capteurs", url: "/domotique/capteurs", icon: Wifi },
+  { title: "Contrôle", url: "/domotique/controle", icon: MonitorSpeaker },
+  { title: "Énergie", url: "/domotique/energie", icon: Zap },
+  { title: "Routines", url: "/domotique/routines", icon: Bot },
+];
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { user, logout, hasRole } = useAuth();
+  const { enabled: domotiqueEnabled } = useDomotique();
   const initials = user?.nom?.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "??";
   const primaryRole = user?.roles?.[0] || "Utilisateur";
 
@@ -129,6 +140,19 @@ export function AppSidebar() {
             <SidebarMenu>{visible(pilotage).map(renderItem)}</SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {domotiqueEnabled && isAdmin && (
+          <SidebarGroup>
+            {!collapsed && (
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 px-3 flex items-center gap-1.5">
+                <Wifi className="w-3 h-3" /> Domotique
+              </SidebarGroupLabel>
+            )}
+            <SidebarGroupContent>
+              <SidebarMenu>{domotiqueItems.map(renderItem)}</SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-3 space-y-2">

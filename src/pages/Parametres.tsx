@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Save, Loader2 } from "lucide-react";
+import { Plus, Save, Loader2, Wifi, Building2, Activity, Zap, Bot } from "lucide-react";
 import { useEffect, useState } from "react";
 import { usersApi, rolesApi, depotsApi, suppliersApi } from "@/lib/api";
 import { typeDepotLabel } from "@/data/labels";
 import { toast } from "sonner";
+import { useDomotique } from "@/contexts/DomotiqueContext";
 
 const seuils = [
   { libelle: "Validation technique requise",      montant: 500_000,    escalade: "Responsable Technique" },
@@ -33,6 +34,7 @@ export default function ParametresPage() {
   const { data: roles,        loading: loadRoles } = useData(rolesApi.list);
   const { data: depots,       loading: loadDepots } = useData(depotsApi.list);
   const { data: fournisseurs, loading: loadFournisseurs } = useData(suppliersApi.list);
+  const { enabled: domotiqueEnabled, setEnabled: setDomotiqueEnabled } = useDomotique();
 
   return (
     <AppLayout>
@@ -42,12 +44,15 @@ export default function ParametresPage() {
         description="Utilisateurs, rôles, dépôts, fournisseurs et seuils de validation."
       />
       <Tabs defaultValue="users">
-        <TabsList className="mb-4">
+        <TabsList className="mb-4 flex-wrap h-auto gap-1">
           <TabsTrigger value="users">Utilisateurs</TabsTrigger>
           <TabsTrigger value="roles">Rôles & permissions</TabsTrigger>
           <TabsTrigger value="depots">Dépôts</TabsTrigger>
           <TabsTrigger value="fournisseurs">Fournisseurs</TabsTrigger>
           <TabsTrigger value="seuils">Seuils de validation</TabsTrigger>
+          <TabsTrigger value="domotique" className="flex items-center gap-1.5">
+            <Wifi className="w-3.5 h-3.5" /> Domotique
+          </TabsTrigger>
         </TabsList>
 
         {/* Utilisateurs */}
@@ -192,6 +197,73 @@ export default function ParametresPage() {
                   ))}
                 </tbody>
               </table>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Domotique */}
+        <TabsContent value="domotique">
+          <div className="rounded-xl bg-card border border-border shadow-sm p-6 space-y-6">
+            <div>
+              <h2 className="font-semibold flex items-center gap-2">
+                <Wifi className="w-5 h-5 text-primary" /> Module Domotique
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Activez le module domotique pour superviser, configurer et piloter les immeubles connectés depuis BTP Manager.
+              </p>
+            </div>
+
+            {/* Toggle principal */}
+            <div className="flex items-center justify-between p-4 rounded-xl bg-muted/40 border border-border">
+              <div className="space-y-1">
+                <p className="font-medium text-sm">Activer la domotique</p>
+                <p className="text-xs text-muted-foreground">
+                  Ajoute la section "Domotique" dans le menu de navigation.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`text-xs font-medium ${domotiqueEnabled ? "text-success" : "text-muted-foreground"}`}>
+                  {domotiqueEnabled ? "Activé" : "Désactivé"}
+                </span>
+                <Switch
+                  checked={domotiqueEnabled}
+                  onCheckedChange={v => {
+                    setDomotiqueEnabled(v);
+                    toast.success(v ? "Module domotique activé — accédez via le menu" : "Module domotique désactivé");
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Fonctionnalités disponibles */}
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Fonctionnalités incluses</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {[
+                  { icon: Building2, label: "Bâtiments", desc: "Configuration des immeubles, étages, appartements et pièces" },
+                  { icon: Wifi, label: "Capteurs & Actionneurs", desc: "Enrôlement et gestion des équipements IoT" },
+                  { icon: Activity, label: "Supervision temps réel", desc: "Dashboard, alertes, historique des mesures" },
+                  { icon: Zap, label: "Énergie intelligente", desc: "Consommation, coûts, projections et optimisation" },
+                  { icon: Bot, label: "Routines & Automatisation", desc: "Règles conditionnelles sans code" },
+                ].map(f => (
+                  <div key={f.label} className="flex items-start gap-3 p-3 rounded-lg border border-border bg-background">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <f.icon className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{f.label}</p>
+                      <p className="text-xs text-muted-foreground">{f.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {domotiqueEnabled && (
+              <div className="flex items-center gap-2 text-sm text-success bg-success/10 border border-success/20 rounded-lg px-4 py-3">
+                <Wifi className="w-4 h-4 shrink-0" />
+                Le module est actif. Retrouvez la section <strong>Domotique</strong> dans le menu de gauche.
+              </div>
             )}
           </div>
         </TabsContent>

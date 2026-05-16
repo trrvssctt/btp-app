@@ -4,8 +4,15 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { DomotiqueProvider } from "@/contexts/DomotiqueContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Login from "./pages/Login.tsx";
+import DomotiqueDashboard from "./pages/domotique/DomotiqueDashboard.tsx";
+import DomotiqueBatiments from "./pages/domotique/DomotiqueBatiments.tsx";
+import DomotiqueCapteurs from "./pages/domotique/DomotiqueCapteurs.tsx";
+import DomotiqueControle from "./pages/domotique/DomotiqueControle.tsx";
+import DomotiqueEnergie from "./pages/domotique/DomotiqueEnergie.tsx";
+import DomotiqueRoutines from "./pages/domotique/DomotiqueRoutines.tsx";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Demandes from "./pages/Demandes.tsx";
@@ -35,6 +42,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <DomotiqueProvider>
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
@@ -55,9 +63,16 @@ const App = () => (
             <Route path="/parametres" element={protect(<Parametres />, ["ADMIN"])} />
             <Route path="/audit" element={protect(<Audit />, ["AUDITEUR", "CONTROLEUR"])} />
             <Route path="/notifications" element={protect(<Notifications />)} />
+            <Route path="/domotique" element={protect(<DomotiqueDashboard />, ["ADMIN"])} />
+            <Route path="/domotique/batiments" element={protect(<DomotiqueBatiments />, ["ADMIN"])} />
+            <Route path="/domotique/capteurs" element={protect(<DomotiqueCapteurs />, ["ADMIN"])} />
+            <Route path="/domotique/controle" element={protect(<DomotiqueControle />, ["ADMIN"])} />
+            <Route path="/domotique/energie" element={protect(<DomotiqueEnergie />, ["ADMIN"])} />
+            <Route path="/domotique/routines" element={protect(<DomotiqueRoutines />, ["ADMIN"])} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
+        </DomotiqueProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
