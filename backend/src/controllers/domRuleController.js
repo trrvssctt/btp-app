@@ -42,6 +42,17 @@ exports.create = [validate(ruleSchema), asyncHandler(async (req, res) => {
   res.status(201).json({ data: await m.create(req.body) });
 })];
 
+exports.update = [validate(ruleSchema), asyncHandler(async (req, res) => {
+  const r = await m.update(req.params.id, req.body);
+  if (!r) throw new HttpError(404, 'Rule not found');
+  res.json({ data: r });
+})];
+
+exports.remove = asyncHandler(async (req, res) => {
+  await m.remove(req.params.id);
+  res.status(204).end();
+});
+
 exports.toggle = asyncHandler(async (req, res) => {
   const { enabled } = req.body;
   if (typeof enabled !== 'boolean') throw new HttpError(400, '"enabled" doit être un booléen');
