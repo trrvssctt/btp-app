@@ -9,6 +9,15 @@ import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { depotsApi, purchaseOrdersApi, receiptsApi, apiError } from "@/lib/api";
 
+interface ReceptionLine {
+  purchase_order_line_id?: string;
+  article_id?: string | null;
+  designation_libre?: string | null;
+  designation: string;
+  quantite_commandee: number;
+  quantite_recue: number;
+}
+
 export function NewReceptionDialog({ trigger, onSuccess }: { trigger?: React.ReactNode; onSuccess?: () => void }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -19,6 +28,8 @@ export function NewReceptionDialog({ trigger, onSuccess }: { trigger?: React.Rea
   const [date, setDate] = useState("");
   const [conformite, setConformite] = useState("CONFORME");
   const [reserve, setReserve] = useState("");
+  const [lignes, setLignes] = useState<ReceptionLine[]>([]);
+  const [loadingLignes, setLoadingLignes] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -30,10 +41,38 @@ export function NewReceptionDialog({ trigger, onSuccess }: { trigger?: React.Rea
       .catch(() => {});
   }, [open]);
 
-  const reset = () => { setCommandeId(""); setDepot(""); setDate(""); setConformite("CONFORME"); setReserve(""); };
+  // When a commande is selected, fetch its lines
+  useEffect(() => {
+    if (!commandeId) { setLignes([]); return; }
+    setLoadingLignes(true);
+    purchaseOrdersApi.get(commandeId)
+      .then((po) => {
+        const mapped: ReceptionLine[] = (po.lignes || []).map((l: any) => ({
+          purchase_order_line_id: l.id,
+          article_id: l.article_id || null,
+          designation_libre: l.designation_libre || null,
+          designation: l.article_designation || l.designation_libre || "Article sans nom",
+          quantite_commandee: parseFloat(l.quantite),
+          quantite_recue: parseFloat(l.quantite),
+        }));
+        setLignes(mapped);
+      })
+      .catch(() => setLignes([]))
+      .finally(() => setLoadingLignes(false));
+  }, [commandeId]);
+
+  const updateQte = (idx: number, val: string) => {
+    setLignes((prev) => prev.map((l, i) => i === idx ? { ...l, quantite_recue: parseFloat(val) || 0 } : l));
+  };
+
+  const reset = () => {
+    setCommandeId(""); setDepot(""); setDate(""); setConformite("CONFORME");
+    setReserve(""); setLignes([]);
+  };
 
   const submit = async () => {
     if (!depot || !date) { toast.error("Champs obligatoires manquants"); return; }
+    const lignesValides = lignes.filter((l) => l.quantite_recue > 0);
     setSaving(true);
     try {
       await receiptsApi.create({
@@ -42,9 +81,17 @@ export function NewReceptionDialog({ trigger, onSuccess }: { trigger?: React.Rea
         date_reception: date,
         conformite,
         reserve: reserve || undefined,
+        lignes: lignesValides.length > 0 ? lignesValides.map((l) => ({
+          article_id: l.article_id,
+          designation_libre: l.designation_libre,
+          quantite_recue: l.quantite_recue,
+          purchase_order_line_id: l.purchase_order_line_id,
+        })) : undefined,
       });
       toast.success("Réception enregistrée", {
-        description: conformite === "CONFORME" ? "Stock mis à jour." : "Réserve enregistrée.",
+        description: lignesValides.length > 0
+          ? `${lignesValides.length} article(s) ajouté(s) au stock.`
+          : conformite === "CONFORME" ? "Stock mis à jour." : "Réserve enregistrée.",
       });
       reset();
       setOpen(false);
@@ -61,7 +108,7 @@ export function NewReceptionDialog({ trigger, onSuccess }: { trigger?: React.Rea
       <DialogTrigger asChild>
         {trigger ?? <Button size="sm" className="gap-1.5"><Plus className="w-4 h-4" /> Nouvelle réception</Button>}
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Enregistrer une réception</DialogTitle>
           <DialogDescription>Contrôle de conformité et affectation dépôt.</DialogDescription>
@@ -104,6 +151,49 @@ export function NewReceptionDialog({ trigger, onSuccess }: { trigger?: React.Rea
               </Select>
             </div>
           </div>
+
+          {/* Lines from the purchase order */}
+          {loadingLignes && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" /> Chargement des lignes…
+            </div>
+          )}
+          {lignes.length > 0 && (
+            <div className="space-y-2">
+              <Label>Articles réceptionnés</Label>
+              <div className="border rounded-md overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted text-muted-foreground">
+                    <tr>
+                      <th className="text-left px-3 py-2 font-medium">Désignation</th>
+                      <th className="text-right px-3 py-2 font-medium w-28">Commandé</th>
+                      <th className="text-right px-3 py-2 font-medium w-28">Reçu *</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lignes.map((l, idx) => (
+                      <tr key={idx} className="border-t">
+                        <td className="px-3 py-2">{l.designation}</td>
+                        <td className="px-3 py-2 text-right text-muted-foreground">{l.quantite_commandee}</td>
+                        <td className="px-3 py-2">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={l.quantite_commandee}
+                            step="any"
+                            value={l.quantite_recue}
+                            onChange={(e) => updateQte(idx, e.target.value)}
+                            className="h-7 text-right w-full"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {conformite !== "CONFORME" && (
             <div className="space-y-1.5">
               <Label>Détail réserve / écart</Label>

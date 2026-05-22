@@ -4,39 +4,61 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Loader2 } from "lucide-react";
+import { Pencil, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { articlesApi, articleFamiliesApi, unitsApi, apiError } from "@/lib/api";
 
-export function NewArticleDialog({ trigger, onSuccess }: { trigger?: React.ReactNode; onSuccess?: () => void }) {
+interface ArticleRow {
+  id: string;
+  code: string;
+  designation: string;
+  famille_id?: string | null;
+  unite_id?: string | null;
+  nature: string;
+  prix_moyen: number | string | null;
+  seuil_min: number | string | null;
+  is_used: boolean;
+}
+
+interface Props {
+  article: ArticleRow;
+  trigger?: React.ReactNode;
+  onSuccess?: () => void;
+}
+
+export function EditArticleDialog({ article, trigger, onSuccess }: Props) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [familles, setFamilles] = useState<any[]>([]);
   const [unites, setUnites] = useState<any[]>([]);
-  const [code, setCode] = useState("");
-  const [designation, setDesignation] = useState("");
-  const [familleId, setFamilleId] = useState("");
-  const [uniteId, setUniteId] = useState("");
-  const [nature, setNature] = useState("STOCKABLE");
-  const [prix, setPrix] = useState("");
-  const [seuilMin, setSeuilMin] = useState("");
+
+  const [code, setCode] = useState(article.code);
+  const [designation, setDesignation] = useState(article.designation);
+  const [familleId, setFamilleId] = useState(article.famille_id ?? "");
+  const [uniteId, setUniteId] = useState(article.unite_id ?? "");
+  const [nature, setNature] = useState(article.nature);
+  const [prix, setPrix] = useState(article.prix_moyen != null ? String(article.prix_moyen) : "");
+  const [seuilMin, setSeuilMin] = useState(article.seuil_min != null ? String(article.seuil_min) : "");
 
   useEffect(() => {
     if (!open) return;
+    setCode(article.code);
+    setDesignation(article.designation);
+    setFamilleId(article.famille_id ?? "");
+    setUniteId(article.unite_id ?? "");
+    setNature(article.nature);
+    setPrix(article.prix_moyen != null ? String(article.prix_moyen) : "");
+    setSeuilMin(article.seuil_min != null ? String(article.seuil_min) : "");
     Promise.all([articleFamiliesApi.list(), unitsApi.list()])
       .then(([f, u]) => { setFamilles(f); setUnites(u); })
       .catch(() => {});
-  }, [open]);
-
-  const reset = () => { setCode(""); setDesignation(""); setFamilleId(""); setUniteId(""); setPrix(""); setSeuilMin(""); setNature("STOCKABLE"); };
+  }, [open, article]);
 
   const submit = async () => {
-    if (!code || !designation) {
-      toast.error("Champs obligatoires manquants"); return;
-    }
+    if (!code || !designation) { toast.error("Code et désignation obligatoires"); return; }
     setSaving(true);
     try {
-      await articlesApi.create({
+      await articlesApi.update(article.id, {
         code,
         designation,
         famille_id: familleId || null,
@@ -45,32 +67,47 @@ export function NewArticleDialog({ trigger, onSuccess }: { trigger?: React.React
         prix_moyen: prix ? parseFloat(prix) : null,
         seuil_min: seuilMin ? parseFloat(seuilMin) : null,
       });
-      toast.success("Article créé", { description: `${code} — ${designation}` });
-      reset();
+      toast.success("Article modifié", { description: `${code} — ${designation}` });
       setOpen(false);
       onSuccess?.();
     } catch (err) {
-      toast.error("Erreur lors de la création", { description: apiError(err) });
+      toast.error("Modification impossible", { description: apiError(err) });
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {trigger ?? <Button size="sm" className="gap-1.5"><Plus className="w-4 h-4" /> Nouvel article</Button>}
+        {trigger ?? (
+          <Button size="sm" variant="outline" className="gap-1.5 h-7 px-2 text-xs" disabled={article.is_used}>
+            <Pencil className="w-3 h-3" />
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nouvel article</DialogTitle>
-          <DialogDescription>Référencement catalogue — code unique requis.</DialogDescription>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="w-4 h-4" /> Modifier l'article
+          </DialogTitle>
+          <DialogDescription>
+            Modification de <span className="font-mono font-semibold">{article.code}</span>
+          </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+
+        {article.is_used && (
+          <div className="flex items-start gap-2 rounded-lg bg-orange-50 border border-orange-200 px-3 py-2.5 text-sm text-orange-700">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>Cet article est référencé dans des documents existants (demandes, bons de commande, mouvements de stock…). La modification est bloquée pour préserver la traçabilité.</span>
+          </div>
+        )}
+
+        <fieldset disabled={article.is_used} className="space-y-4 disabled:opacity-60">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Code *</Label>
-              <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ex : CIM-32.5" className="font-mono" />
+              <Input value={code} onChange={(e) => setCode(e.target.value)} className="font-mono" />
             </div>
             <div className="space-y-1.5">
               <Label>Famille</Label>
@@ -84,7 +121,7 @@ export function NewArticleDialog({ trigger, onSuccess }: { trigger?: React.React
           </div>
           <div className="space-y-1.5">
             <Label>Désignation *</Label>
-            <Input value={designation} onChange={(e) => setDesignation(e.target.value)} placeholder="Ex : Ciment CEM II 32.5 - sac 35kg" />
+            <Input value={designation} onChange={(e) => setDesignation(e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -119,12 +156,13 @@ export function NewArticleDialog({ trigger, onSuccess }: { trigger?: React.React
               <Input type="number" min="0" step="1" value={seuilMin} onChange={(e) => setSeuilMin(e.target.value)} className="text-right tabular-nums" placeholder="0" />
             </div>
           </div>
-        </div>
+        </fieldset>
+
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>Annuler</Button>
-          <Button onClick={submit} disabled={saving}>
+          <Button onClick={submit} disabled={saving || article.is_used}>
             {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-            Créer l'article
+            Enregistrer
           </Button>
         </DialogFooter>
       </DialogContent>

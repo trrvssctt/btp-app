@@ -9,27 +9,42 @@ import { toast } from "sonner";
 import { articlesApi, suppliersApi, purchaseOrdersApi, apiError } from "@/lib/api";
 
 interface Ligne { id: string; articleId: string; quantite: string; prix: string; }
+interface InitialLine { articleId: string; quantite: string; prixMoyen?: string; }
 
 const formatFcfa = (n: number) => n > 0 ? `${n.toLocaleString("fr-SN")} FCFA` : "";
 
-export function NewCommandeDialog({ trigger, onSuccess }: { trigger?: React.ReactNode; onSuccess?: () => void }) {
+export function NewCommandeDialog({
+  trigger,
+  onSuccess,
+  initialLines,
+}: {
+  trigger?: React.ReactNode;
+  onSuccess?: () => void;
+  initialLines?: InitialLine[];
+}) {
+  const buildLignes = (): Ligne[] =>
+    initialLines && initialLines.length > 0
+      ? initialLines.map((l, i) => ({ id: String(i + 1), articleId: l.articleId, quantite: l.quantite, prix: l.prixMoyen ?? "" }))
+      : [{ id: "1", articleId: "", quantite: "", prix: "" }];
+
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [articles, setArticles] = useState<any[]>([]);
   const [supplierId, setSupplierId] = useState("");
-  const [lignes, setLignes] = useState<Ligne[]>([{ id: "1", articleId: "", quantite: "", prix: "" }]);
+  const [lignes, setLignes] = useState<Ligne[]>(buildLignes());
 
   useEffect(() => {
     if (!open) return;
     Promise.all([suppliersApi.list(), articlesApi.list()])
       .then(([s, a]) => { setSuppliers(s); setArticles(a); })
       .catch(() => {});
-  }, [open]);
+    setLignes(buildLignes());
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const total = lignes.reduce((s, l) => s + (parseFloat(l.quantite) || 0) * (parseFloat(l.prix) || 0), 0);
 
-  const reset = () => { setSupplierId(""); setLignes([{ id: "1", articleId: "", quantite: "", prix: "" }]); };
+  const reset = () => { setSupplierId(""); setLignes(buildLignes()); };
 
   const submit = async (statut: string) => {
     if (!supplierId || lignes.some((l) => !l.articleId || !l.quantite || !l.prix)) {
