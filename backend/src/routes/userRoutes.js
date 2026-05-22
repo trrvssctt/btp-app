@@ -4,7 +4,7 @@ const { authenticate, requireRole } = require('../middleware/auth');
 const { query } = require('../db/pool');
 
 router.use(authenticate);
-router.use(requireRole('ADMIN', 'RESP_TECHNIQUE', 'CONTROLEUR'));
+router.use(requireRole('ADMIN', 'RESP_TECHNIQUE', 'CONTROLEUR', 'CHEF_PROJET'));
 
 router.get('/', asyncHandler(async (_req, res) => {
   const { rows } = await query(

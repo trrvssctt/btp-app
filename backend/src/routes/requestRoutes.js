@@ -10,6 +10,7 @@ router.post('/', requirePermission('REQUEST_CREATE'), ctrl.create);
 router.put('/:id', ctrl.update);
 router.delete('/:id', ctrl.cancel);
 router.post('/:id/approvals', ctrl.addApproval);
+router.post('/:id/submit', ctrl.submit);
 router.post('/:id/complement', ctrl.requestComplement);
 router.post('/:id/resubmit', ctrl.resubmit);
 

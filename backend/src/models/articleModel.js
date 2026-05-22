@@ -1,5 +1,23 @@
 const { query } = require('../db/pool');
 
+async function checkUsage(id) {
+  const { rows } = await query(
+    `SELECT EXISTS (
+       SELECT 1 FROM request_lines        WHERE article_id = $1
+       UNION ALL
+       SELECT 1 FROM purchase_order_lines WHERE article_id = $1
+       UNION ALL
+       SELECT 1 FROM stock_movements      WHERE article_id = $1
+       UNION ALL
+       SELECT 1 FROM transfer_lines       WHERE article_id = $1
+       UNION ALL
+       SELECT 1 FROM receipt_lines        WHERE article_id = $1
+     ) AS used`,
+    [id],
+  );
+  return rows[0]?.used ?? false;
+}
+
 async function list({ search } = {}) {
   const params = [];
   let where = 'WHERE a.actif = true';
@@ -8,12 +26,25 @@ async function list({ search } = {}) {
     where += ` AND (a.code ILIKE $${params.length} OR a.designation ILIKE $${params.length})`;
   }
   const { rows } = await query(
-    `SELECT a.*, f.libelle AS famille, u.code AS unite
+    `SELECT a.*,
+            f.libelle AS famille,
+            u.code    AS unite,
+            EXISTS (
+              SELECT 1 FROM request_lines        WHERE article_id = a.id
+              UNION ALL
+              SELECT 1 FROM purchase_order_lines WHERE article_id = a.id
+              UNION ALL
+              SELECT 1 FROM stock_movements      WHERE article_id = a.id
+              UNION ALL
+              SELECT 1 FROM transfer_lines       WHERE article_id = a.id
+              UNION ALL
+              SELECT 1 FROM receipt_lines        WHERE article_id = a.id
+            ) AS is_used
        FROM articles a
        LEFT JOIN article_families f ON f.id = a.famille_id
        LEFT JOIN units u ON u.id = a.unite_id
       ${where}
-      ORDER BY a.code`,
+      ORDER BY a.created_at DESC`,
     params,
   );
   return rows;
@@ -56,4 +87,4 @@ async function remove(id) {
   await query(`UPDATE articles SET actif = false, updated_at = now() WHERE id = $1`, [id]);
 }
 
-module.exports = { list, findById, create, update, remove };
+module.exports = { list, findById, create, update, remove, checkUsage };

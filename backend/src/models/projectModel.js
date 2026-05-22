@@ -1,4 +1,4 @@
-const { query } = require('../db/pool');
+const { query, withTransaction } = require('../db/pool');
 
 async function list() {
   const { rows } = await query(
@@ -6,6 +6,7 @@ async function list() {
        FROM projects p
        LEFT JOIN (SELECT project_id, COUNT(*) FROM sites GROUP BY project_id) s
               ON s.project_id = p.id
+      WHERE p.statut != 'SUPPRIME'
       ORDER BY p.created_at DESC`,
   );
   return rows;
@@ -33,21 +34,53 @@ async function create(p) {
   return rows[0];
 }
 
-async function update(id, p) {
-  const sets = ['updated_at = now()'];
-  const params = [id];
-  const add = (col, val) => { params.push(val ?? null); sets.push(`${col} = $${params.length}`); };
-  if (p.nom           !== undefined) add('nom',           p.nom);
-  if (p.client        !== undefined) add('client',        p.client);
-  if (p.budget_initial !== undefined) add('budget_initial', p.budget_initial);
-  if (p.statut        !== undefined) add('statut',        p.statut);
-  if (p.date_debut    !== undefined) add('date_debut',    p.date_debut);
-  if (p.date_fin      !== undefined) add('date_fin',      p.date_fin);
+async function update(id, p, userId = null) {
+  return withTransaction(async (c) => {
+    // Fetch current statut before update to detect a change
+    const current = (await c.query(`SELECT statut FROM projects WHERE id = $1`, [id])).rows[0];
+    if (!current) return null;
+
+    const sets = ['updated_at = now()'];
+    const params = [id];
+    const add = (col, val) => { params.push(val ?? null); sets.push(`${col} = $${params.length}`); };
+    if (p.code           !== undefined) add('code',           p.code);
+    if (p.nom            !== undefined) add('nom',            p.nom);
+    if (p.client         !== undefined) add('client',         p.client);
+    if (p.budget_initial !== undefined) add('budget_initial', p.budget_initial);
+    if (p.statut         !== undefined) add('statut',         p.statut);
+    if (p.motif_statut   !== undefined) add('motif_statut',   p.motif_statut);
+    if (p.date_debut     !== undefined) add('date_debut',     p.date_debut);
+    if (p.date_fin       !== undefined) add('date_fin',       p.date_fin);
+
+    const { rows } = await c.query(
+      `UPDATE projects SET ${sets.join(', ')} WHERE id = $1 RETURNING *`,
+      params,
+    );
+    const updated = rows[0] || null;
+
+    // Log the status change if statut actually changed
+    if (updated && p.statut !== undefined && p.statut !== current.statut) {
+      await c.query(
+        `INSERT INTO project_status_logs(project_id, ancien_statut, nouveau_statut, motif, user_id)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [id, current.statut, p.statut, p.motif_statut || null, userId],
+      );
+    }
+
+    return updated;
+  });
+}
+
+async function getStatusLogs(id) {
   const { rows } = await query(
-    `UPDATE projects SET ${sets.join(', ')} WHERE id = $1 RETURNING *`,
-    params,
+    `SELECT psl.*, u.nom AS user_nom
+       FROM project_status_logs psl
+       LEFT JOIN users u ON u.id = psl.user_id
+      WHERE psl.project_id = $1
+      ORDER BY psl.created_at DESC`,
+    [id],
   );
-  return rows[0] || null;
+  return rows;
 }
 
 async function remove(id) {
@@ -111,10 +144,11 @@ async function getDetail(id) {
        FROM purchase_orders po
        JOIN suppliers s ON s.id = po.supplier_id
        LEFT JOIN purchase_order_lines pol ON pol.purchase_order_id = po.id
+      WHERE po.request_id IN (SELECT id FROM requests WHERE project_id = $1)
       GROUP BY po.id, s.raison_sociale
       ORDER BY po.created_at DESC
       LIMIT 50`,
-    [],
+    [id],
   )).rows;
 
   const receipts = (await query(
@@ -124,23 +158,30 @@ async function getDetail(id) {
        JOIN depots d ON d.id = r.depot_id
        LEFT JOIN purchase_orders po ON po.id = r.purchase_order_id
        LEFT JOIN suppliers s ON s.id = po.supplier_id
+      WHERE r.purchase_order_id IN (
+        SELECT id FROM purchase_orders
+         WHERE request_id IN (SELECT id FROM requests WHERE project_id = $1)
+      )
       ORDER BY r.created_at DESC
       LIMIT 50`,
-    [],
+    [id],
   )).rows;
 
-  const transfers = (await query(
+  const transfers = siteIds.length > 0 ? (await query(
     `SELECT t.*, d1.code AS depot_from_code, d1.nom AS depot_from_nom,
             d2.code AS depot_to_code, d2.nom AS depot_to_nom
        FROM transfers t
        JOIN depots d1 ON d1.id = t.depot_from
        JOIN depots d2 ON d2.id = t.depot_to
+      WHERE d1.site_id = ANY($1::uuid[]) OR d2.site_id = ANY($1::uuid[])
       ORDER BY t.created_at DESC
       LIMIT 50`,
-    [],
-  )).rows;
+    [siteIds],
+  )).rows : [];
 
-  return { ...proj, sites, requests, movements, stock, purchaseOrders, receipts, transfers };
+  const statusLogs = await getStatusLogs(id);
+
+  return { ...proj, sites, requests, movements, stock, purchaseOrders, receipts, transfers, statusLogs };
 }
 
-module.exports = { list, findById, listSites, create, update, remove, getDetail };
+module.exports = { list, findById, listSites, create, update, remove, getDetail, getStatusLogs };
