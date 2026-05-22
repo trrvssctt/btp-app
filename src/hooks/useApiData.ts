@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function useApiData<T>(
   fetcher: () => Promise<T>,
@@ -9,6 +9,8 @@ export function useApiData<T>(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [usingFallback, setUsingFallback] = useState(false);
+  // Once we've loaded real API data, never fall back to mock on re-fetch errors
+  const loadedFromApi = useRef(false);
 
   useEffect(() => {
     let alive = true;
@@ -17,14 +19,17 @@ export function useApiData<T>(
     fetcher()
       .then((d) => {
         if (!alive) return;
+        loadedFromApi.current = true;
         setData(d);
         setUsingFallback(false);
       })
       .catch((e) => {
         if (!alive) return;
         console.warn("[useApiData] API offline, fallback:", e?.message);
-        setData(fallback);
-        setUsingFallback(true);
+        if (!loadedFromApi.current) {
+          setData(fallback);
+          setUsingFallback(true);
+        }
         setError(e?.message || "Erreur réseau");
       })
       .finally(() => alive && setLoading(false));

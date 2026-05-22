@@ -29,7 +29,8 @@ const formatFcfa = (n: number | string | null) =>
 export default function AchatsPage() {
   const { hasRole } = useAuth();
   const canCreate = hasRole("ADMIN", "RESP_LOGISTIQUE", "ACHETEUR");
-  const [refreshKey, setRefreshKey] = useState(0);
+  // increment on every mount so the list is always fresh when navigating back
+  const [refreshKey, setRefreshKey] = useState(() => Date.now());
 
   const { data, loading, usingFallback } = useApiData<any[]>(
     () => purchaseOrdersApi.list(),

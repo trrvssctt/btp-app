@@ -27,7 +27,7 @@ const ROLE_INFO: Record<string, { label: string; desc: string; color: string; ac
   DAF:            { label: "Directeur Administratif & Financier", desc: "Approbation financière finale des demandes et supervision des budgets.",      color: "bg-amber-600",   access: ["Approbation finale des demandes", "Reporting budgétaire"] },
   DG:             { label: "Directeur Général",                 desc: "Vision globale de l'activité, pilotage stratégique et reporting.",              color: "bg-orange-600",  access: ["Reporting", "Tableau de bord global"] },
   MAGASINIER:     { label: "Magasinier",                        desc: "Gérez les stocks, enregistrez les mouvements et traitez les réceptions.",       color: "bg-rose-600",    access: ["Stock", "Mouvements", "Transferts", "Réceptions", "Articles"] },
-  ACHETEUR:       { label: "Acheteur",                          desc: "Émettez les commandes fournisseurs et réceptionnez les livraisons.",            color: "bg-pink-600",    access: ["Achats", "Réceptions", "Articles"] },
+  ACHETEUR:       { label: "Acheteur",                          desc: "Transformez les demandes approuvées en bons de commande et réceptionnez les livraisons.",  color: "bg-pink-600",    access: ["Demandes approuvées", "Achats", "Réceptions", "Articles"] },
   RESP_LOGISTIQUE:{ label: "Responsable logistique",            desc: "Coordonnez les flux logistiques entre dépôts et chantiers.",                   color: "bg-red-600",     access: ["Stock", "Mouvements", "Transferts", "Achats", "Réceptions"] },
   AUDITEUR:       { label: "Auditeur",                          desc: "Consultez le journal d'audit et vérifiez la conformité des opérations.",        color: "bg-slate-600",   access: ["Journal d'audit", "Reporting (lecture seule)"] },
 };
@@ -145,9 +145,30 @@ function ViewAll({ to, label = "Tout voir" }: { to: string; label?: string }) {
   );
 }
 
+/* ─── role-aware visibility (same rule as Demandes list page) ───── */
+
+const VISIBLE_FROM: Record<string, string[]> = {
+  REQUEST_VALIDATE_BUDGET:    ["BROUILLON", "SOUMISE"],
+  REQUEST_VALIDATE_DIRECTION: ["BROUILLON", "SOUMISE", "EN_COMPLEMENT", "VALIDATION_BUDGETAIRE"],
+};
+
+const ACHETEUR_STATUTS = ["APPROUVEE", "EN_ACHAT", "EN_PREPARATION", "MISE_A_DISPO"];
+
+function applyRoleVisible(demandes: any[], permissions: string[], isAdmin: boolean, roles: string[]): any[] {
+  if (isAdmin) return demandes;
+  if (roles.includes("ACHETEUR")) return demandes.filter((d) => ACHETEUR_STATUTS.includes(d.statut));
+  for (const [perm, hidden] of Object.entries(VISIBLE_FROM)) {
+    if (permissions.includes(perm)) return demandes.filter((d) => !hidden.includes(d.statut));
+  }
+  return demandes;
+}
+
 /* ─── role-aware request filter ─────────────────────────────────── */
 
-function pendingForRole(demandes: any[], perms: string[]): any[] {
+function pendingForRole(demandes: any[], perms: string[], roles: string[]): any[] {
+  if (roles.includes("ACHETEUR")) {
+    return demandes.filter((d) => d.statut === "APPROUVEE");
+  }
   if (perms.includes("REQUEST_VALIDATE_DIRECTION")) {
     return demandes.filter((d) => d.statut === "VALIDATION_DIRECTION");
   }
@@ -155,14 +176,15 @@ function pendingForRole(demandes: any[], perms: string[]): any[] {
     return demandes.filter((d) => d.statut === "VALIDATION_BUDGETAIRE");
   }
   if (perms.includes("REQUEST_VALIDATE_TECH")) {
-    return demandes.filter((d) => d.statut === "VALIDATION_TECHNIQUE");
+    return demandes.filter((d) => d.statut === "SOUMISE");
   }
   return demandes.filter((d) =>
     ["SOUMISE", "VALIDATION_TECHNIQUE", "VALIDATION_BUDGETAIRE", "VALIDATION_DIRECTION"].includes(d.statut)
   );
 }
 
-function pendingLabelForRole(perms: string[]): string {
+function pendingLabelForRole(perms: string[], roles: string[]): string {
+  if (roles.includes("ACHETEUR"))                  return "Demandes approuvées à commander";
   if (perms.includes("REQUEST_VALIDATE_DIRECTION")) return "En attente de votre approbation";
   if (perms.includes("REQUEST_VALIDATE_BUDGET"))    return "En attente de validation budgétaire";
   if (perms.includes("REQUEST_VALIDATE_TECH"))      return "En attente de validation technique";
@@ -213,9 +235,17 @@ export default function DashboardPage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── derived data ── */
-  const myPending       = pendingForRole(demandes, permissions);
+  const isAdmin    = hasRole("ADMIN");
+  const roles: string[] = user?.roles ?? [];
+  const isAcheteur = roles.includes("ACHETEUR") && !isAdmin;
+  const roleVisible = applyRoleVisible(demandes, permissions, isAdmin, roles);
+
+  const urgenceWeight: Record<string, number> = { CRITIQUE: 4, HAUTE: 3, URGENTE: 2, NORMALE: 1 };
+  const myPending       = [...pendingForRole(roleVisible, permissions, roles)].sort(
+    (a, b) => (urgenceWeight[b.urgence] ?? 0) - (urgenceWeight[a.urgence] ?? 0),
+  );
   const myPendingUrgent = myPending.filter((d) => ["CRITIQUE", "HAUTE", "URGENTE"].includes(d.urgence));
-  const myPendingLabel  = pendingLabelForRole(permissions);
+  const myPendingLabel  = pendingLabelForRole(permissions, roles);
 
   const stockAlertes = stock.filter((s) => Number(s.qte_disponible) <= Number(s.seuil_alerte));
   const stockBas     = stock.filter((s) => {
@@ -290,7 +320,7 @@ export default function DashboardPage() {
             <div>
               <p className="text-white text-lg font-bold tabular-nums leading-none">{myPending.length}</p>
               <p className="text-white/50 text-xs mt-0.5">
-                {isValidator ? "Demandes à traiter" : "Demandes en cours"}
+                {isAcheteur ? "À commander" : isValidator ? "Demandes à traiter" : "Demandes en cours"}
               </p>
             </div>
           </div>
@@ -326,7 +356,7 @@ export default function DashboardPage() {
               <CheckCircle2 className="w-4 h-4 text-white/40 shrink-0" />
               <div>
                 <p className="text-white text-lg font-bold tabular-nums leading-none">
-                  {demandes.filter((d) => d.statut === "APPROUVEE").length}
+                  {roleVisible.filter((d) => d.statut === "APPROUVEE").length}
                 </p>
                 <p className="text-white/50 text-xs mt-0.5">Demandes approuvées</p>
               </div>
@@ -339,7 +369,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {/* KPI 1 — toujours présent */}
         <BigKpi
-          label={isValidator ? "À traiter par vous" : "Demandes en attente"}
+          label={isAcheteur ? "À commander" : isValidator ? "À traiter par vous" : "Demandes en attente"}
           value={myPending.length}
           sub={myPendingUrgent.length > 0
             ? `dont ${myPendingUrgent.length} urgente${myPendingUrgent.length > 1 ? "s" : ""}`
@@ -369,7 +399,7 @@ export default function DashboardPage() {
         ) : (
           <BigKpi
             label="Total demandes"
-            value={demandes.length}
+            value={roleVisible.length}
             sub="Toutes périodes"
             icon={Activity}
             tone="success"
@@ -396,7 +426,7 @@ export default function DashboardPage() {
         ) : (
           <BigKpi
             label="Demandes approuvées"
-            value={demandes.filter((d) => d.statut === "APPROUVEE").length}
+            value={roleVisible.filter((d) => d.statut === "APPROUVEE").length}
             sub="Total approuvées"
             icon={CheckCircle2}
             tone="success"
@@ -415,10 +445,10 @@ export default function DashboardPage() {
         ) : (
           <BigKpi
             label="Demandes rejetées"
-            value={demandes.filter((d) => d.statut === "REJETEE").length}
+            value={roleVisible.filter((d) => d.statut === "REJETEE").length}
             sub="Total rejetées"
             icon={AlertTriangle}
-            tone={demandes.filter((d) => d.statut === "REJETEE").length > 0 ? "warning" : "success"}
+            tone={roleVisible.filter((d) => d.statut === "REJETEE").length > 0 ? "warning" : "success"}
           />
         )}
       </div>
@@ -429,13 +459,13 @@ export default function DashboardPage() {
         {/* ── Demandes (2/3) — filtrées selon le rôle ─── */}
         <SectionCard
           className="xl:col-span-2"
-          title={isValidator ? "Demandes à traiter" : "Demandes en cours"}
+          title={isAcheteur ? "Demandes à commander" : isValidator ? "Demandes à traiter" : "Demandes en cours"}
           sub={`${myPending.length} ${myPendingLabel.toLowerCase()}`}
           icon={FileText}
           action={<ViewAll to="/demandes" />}
         >
           {myPending.length === 0 ? (
-            <EmptyState icon={CheckCircle2} text={isValidator ? "Aucune demande à traiter pour le moment" : "Aucune demande en attente"} />
+            <EmptyState icon={CheckCircle2} text={isAcheteur ? "Aucune demande approuvée en attente" : isValidator ? "Aucune demande à traiter pour le moment" : "Aucune demande en attente"} />
           ) : (
             <div className="divide-y divide-border/60">
               {myPending.slice(0, 6).map((d) => (

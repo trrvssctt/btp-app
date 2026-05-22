@@ -4,11 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft, Check, X, Calendar, MapPin, User, Paperclip,
-  MessageSquare, Loader2, RotateCcw, AlertCircle,
+  MessageSquare, Loader2, RotateCcw, AlertCircle, Send, Pencil, Trash2, Plus, ShoppingCart,
 } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
-import { requestsApi } from "@/lib/api";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { requestsApi, articlesApi, apiError } from "@/lib/api";
+import { NewCommandeDialog } from "@/components/dialogs/NewCommandeDialog";
 import { formatDate, formatEur, statutDemandeLabel, statutDemandeTone, urgenceTone } from "@/data/labels";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,12 +28,14 @@ const workflow = [
 ];
 
 const etapeMap: Record<string, string> = {
+  SOUMISE:               "TECHNIQUE",
   VALIDATION_TECHNIQUE:  "TECHNIQUE",
   VALIDATION_BUDGETAIRE: "BUDGETAIRE",
   VALIDATION_DIRECTION:  "DIRECTION",
 };
 
 const etapePerm: Record<string, string> = {
+  SOUMISE:               "REQUEST_VALIDATE_TECH",
   VALIDATION_TECHNIQUE:  "REQUEST_VALIDATE_TECH",
   VALIDATION_BUDGETAIRE: "REQUEST_VALIDATE_BUDGET",
   VALIDATION_DIRECTION:  "REQUEST_VALIDATE_DIRECTION",
@@ -37,11 +43,20 @@ const etapePerm: Record<string, string> = {
 
 export default function DemandeDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { hasPermission, hasRole } = useAuth();
   const [d, setD] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [commentaire, setCommentaire] = useState("");
-  const [actionLoading, setActionLoading] = useState<"approve" | "reject" | "complement" | "resubmit" | null>(null);
+  const [actionLoading, setActionLoading] = useState<"approve" | "reject" | "complement" | "resubmit" | "saveResubmit" | "submit" | "cancel" | "save" | null>(null);
+
+  // État édition brouillon
+  const [editing, setEditing] = useState(false);
+  const [editUrgence, setEditUrgence] = useState("");
+  const [editMotif, setEditMotif] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editLignes, setEditLignes] = useState<Array<{ id: string; articleId: string; designationLibre: string; quantite: string }>>([]);
+  const [allArticles, setAllArticles] = useState<any[]>([]);
 
   const reload = () => {
     if (!id) return;
@@ -51,7 +66,24 @@ export default function DemandeDetail() {
   useEffect(() => {
     if (!id) return;
     requestsApi.get(id)
-      .then(setD)
+      .then((data) => {
+        setD(data);
+        // Auto-open edit form when request needs modification
+        if (data.statut === 'EN_COMPLEMENT') {
+          setEditUrgence(data.urgence);
+          setEditMotif(data.motif ?? "");
+          setEditDate(data.date_souhaitee ? data.date_souhaitee.slice(0, 10) : "");
+          const lignes = (data.lignes ?? []).map((l: any, i: number) => ({
+            id: l.id ?? String(i),
+            articleId: l.article_id ?? "",
+            designationLibre: l.article_id ? "" : (l.article_designation ?? l.designation_libre ?? ""),
+            quantite: String(l.qte_demandee ?? ""),
+          }));
+          setEditLignes(lignes.length > 0 ? lignes : [{ id: "1", articleId: "", designationLibre: "", quantite: "" }]);
+          articlesApi.list().then(setAllArticles).catch(() => {});
+          setEditing(true);
+        }
+      })
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -122,6 +154,124 @@ export default function DemandeDetail() {
     }
   }
 
+  async function handleSaveAndResubmit() {
+    if (!id) return;
+    const lignesValides = editLignes.filter((l) => l.articleId || l.designationLibre.trim());
+    if (lignesValides.length === 0 || lignesValides.some((l) => !l.quantite)) {
+      toast.error("Lignes incomplètes", { description: "Chaque ligne doit avoir un article ou une désignation et une quantité." });
+      return;
+    }
+    setActionLoading("saveResubmit");
+    try {
+      await requestsApi.update(id, {
+        urgence: editUrgence,
+        motif: editMotif,
+        date_souhaitee: editDate || null,
+        lignes: lignesValides.map((l) => ({
+          article_id: l.articleId || null,
+          designation_libre: l.articleId ? null : l.designationLibre.trim() || null,
+          qte_demandee: parseFloat(l.quantite),
+        })),
+      });
+      await requestsApi.resubmit(id);
+      toast.success("Demande modifiée et resoumise au circuit de validation");
+      setEditing(false);
+      reload();
+    } catch (e: any) {
+      toast.error("Erreur lors de la resoumission", { description: apiError(e) });
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  function openEdit() {
+    if (!d) return;
+    setEditUrgence(d.urgence);
+    setEditMotif(d.motif ?? "");
+    setEditDate(d.date_souhaitee ? d.date_souhaitee.slice(0, 10) : "");
+    const lignes = (d.lignes ?? []).map((l: any, i: number) => ({
+      id: l.id ?? String(i),
+      articleId: l.article_id ?? "",
+      designationLibre: l.article_id ? "" : (l.article_designation ?? l.designation_libre ?? ""),
+      quantite: String(l.qte_demandee ?? ""),
+    }));
+    setEditLignes(lignes.length > 0 ? lignes : [{ id: "1", articleId: "", designationLibre: "", quantite: "" }]);
+    if (allArticles.length === 0) {
+      articlesApi.list().then(setAllArticles).catch(() => {});
+    }
+    setEditing(true);
+  }
+
+  const addEditLigne = () =>
+    setEditLignes((prev) => [...prev, { id: Date.now().toString(), articleId: "", designationLibre: "", quantite: "" }]);
+
+  const removeEditLigne = (lid: string) =>
+    setEditLignes((prev) => prev.filter((l) => l.id !== lid));
+
+  const updateEditLigne = (lid: string, patch: Partial<{ articleId: string; designationLibre: string; quantite: string }>) =>
+    setEditLignes((prev) => prev.map((l) => (l.id === lid ? { ...l, ...patch } : l)));
+
+  const editTotal = editLignes.reduce((s, l) => {
+    const a = allArticles.find((x) => x.id === l.articleId);
+    return s + (Number(a?.prix_moyen) || 0) * (parseFloat(l.quantite) || 0);
+  }, 0);
+
+  async function handleSave() {
+    if (!id) return;
+    const lignesValides = editLignes.filter((l) => l.articleId || l.designationLibre.trim());
+    if (lignesValides.length === 0 || lignesValides.some((l) => !l.quantite)) {
+      toast.error("Lignes incomplètes", { description: "Chaque ligne doit avoir un article ou une désignation et une quantité." });
+      return;
+    }
+    setActionLoading("save");
+    try {
+      await requestsApi.update(id, {
+        urgence: editUrgence,
+        motif: editMotif,
+        date_souhaitee: editDate || null,
+        lignes: lignesValides.map((l) => ({
+          article_id: l.articleId || null,
+          designation_libre: l.articleId ? null : l.designationLibre.trim() || null,
+          qte_demandee: parseFloat(l.quantite),
+        })),
+      });
+      toast.success("Brouillon mis à jour");
+      setEditing(false);
+      reload();
+    } catch (e: any) {
+      toast.error("Erreur lors de la sauvegarde", { description: apiError(e) });
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleSubmitDraft() {
+    if (!id) return;
+    setActionLoading("submit");
+    try {
+      await requestsApi.submit(id);
+      toast.success("Demande soumise au circuit de validation");
+      reload();
+    } catch (e: any) {
+      toast.error("Erreur lors de la soumission", { description: apiError(e) });
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleCancel() {
+    if (!id) return;
+    setActionLoading("cancel");
+    try {
+      await requestsApi.cancel(id);
+      toast.success("Demande annulée");
+      navigate("/demandes");
+    } catch (e: any) {
+      toast.error("Erreur lors de l'annulation", { description: apiError(e) });
+      setActionLoading(null);
+    }
+  }
+
   if (loading) {
     return (
       <>
@@ -142,13 +292,18 @@ export default function DemandeDetail() {
   }
 
   const currentStepIdx = workflow.findIndex((s) => s.key === d.statut);
+  const isBrouillon = d.statut === "BROUILLON";
+  const lastValidatorComment = (d.approvals as any[] | undefined)
+    ?.slice().reverse().find((a) => a.commentaire)?.commentaire ?? null;
   const isTerminal = ["APPROUVEE", "REJETEE", "CLOTUREE", "MISE_A_DISPO"].includes(d.statut);
-  const isValidableStatus = ["VALIDATION_TECHNIQUE", "VALIDATION_BUDGETAIRE", "VALIDATION_DIRECTION"].includes(d.statut);
-  const canRequestComplement = ["VALIDATION_TECHNIQUE", "VALIDATION_BUDGETAIRE"].includes(d.statut);
+  const isValidableStatus = ["SOUMISE", "VALIDATION_TECHNIQUE", "VALIDATION_BUDGETAIRE", "VALIDATION_DIRECTION"].includes(d.statut);
+  const canRequestComplement = ["SOUMISE", "VALIDATION_TECHNIQUE", "VALIDATION_BUDGETAIRE", "VALIDATION_DIRECTION"].includes(d.statut);
   const requiredPerm = etapePerm[d.statut];
   const canValidate = isValidableStatus && (hasRole("ADMIN") || (!!requiredPerm && hasPermission(requiredPerm)));
   const isEnComplement = d.statut === "EN_COMPLEMENT";
   const canCreateRequest = hasPermission("REQUEST_CREATE");
+  const isOwner = canCreateRequest;
+  const canCreatePO = hasRole("ADMIN") || hasRole("ACHETEUR");
 
   const getApproval = (etape: string | null) => {
     if (!etape || !d.approvals) return null;
@@ -255,6 +410,199 @@ export default function DemandeDetail() {
             </table>
           </div>
 
+          {/* ─── Panneau BROUILLON / EN_COMPLEMENT ─── */}
+          {(isBrouillon || isEnComplement) && isOwner && (
+            <div className={`rounded-xl border p-5 space-y-4 ${
+              isBrouillon
+                ? "border-dashed border-amber-300 bg-amber-50"
+                : "border-2 border-orange-400 bg-orange-50"
+            }`}>
+              <div className="flex items-center justify-between">
+                <h2 className={`font-semibold flex items-center gap-2 ${isBrouillon ? "text-amber-800" : "text-orange-800"}`}>
+                  <Pencil className="w-4 h-4" />
+                  {isBrouillon ? "Demande en brouillon" : "Modifications requises par le validateur"}
+                </h2>
+                <span className={`text-xs ${isBrouillon ? "text-amber-600" : "text-orange-600"}`}>
+                  {isBrouillon ? "Non encore soumise au circuit de validation" : "Modifiez puis resoumettez"}
+                </span>
+              </div>
+
+              {/* Motif du retour (uniquement EN_COMPLEMENT) */}
+              {isEnComplement && (
+                <div className="flex items-start gap-2.5 bg-orange-100 border border-orange-200 rounded-lg px-3.5 py-3">
+                  <MessageSquare className="w-4 h-4 text-orange-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-semibold text-orange-700 mb-0.5">Motif du retour</p>
+                    <p className="text-sm text-orange-800">
+                      {lastValidatorComment
+                        ? `"${lastValidatorComment}"`
+                        : "Le validateur a demandé des modifications — veuillez mettre à jour votre demande avant de resoumettre."}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Formulaire d'édition inline */}
+              {editing ? (
+                <div className={`space-y-4 bg-white rounded-lg p-4 border ${isBrouillon ? "border-amber-200" : "border-orange-200"}`}>
+                  {/* Champs généraux */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Niveau d'urgence</Label>
+                      <Select value={editUrgence} onValueChange={setEditUrgence}>
+                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="NORMALE">Normale</SelectItem>
+                          <SelectItem value="URGENTE">Urgente</SelectItem>
+                          <SelectItem value="HAUTE">Haute</SelectItem>
+                          <SelectItem value="CRITIQUE">Critique</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Date souhaitée</Label>
+                      <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="h-9" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Motif / justification</Label>
+                    <Textarea value={editMotif} onChange={(e) => setEditMotif(e.target.value)} rows={2} className="bg-card" />
+                  </div>
+
+                  {/* Éditeur de lignes */}
+                  <div className="border border-border rounded-lg overflow-hidden">
+                    <div className="flex items-center justify-between bg-muted/40 px-3 py-2 border-b border-border">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Articles demandés</p>
+                      <Button type="button" variant="ghost" size="sm" onClick={addEditLigne} className="h-7 gap-1 text-xs">
+                        <Plus className="w-3 h-3" /> Ligne
+                      </Button>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {editLignes.map((l) => {
+                        const art = allArticles.find((x) => x.id === l.articleId);
+                        const sub = art ? Number(art.prix_moyen) * (parseFloat(l.quantite) || 0) : 0;
+                        return (
+                          <div key={l.id} className="grid grid-cols-12 gap-2 p-2.5 items-start">
+                            <div className="col-span-6 space-y-1">
+                              <Select
+                                value={l.articleId || "none"}
+                                onValueChange={(v) => updateEditLigne(l.id, { articleId: v === "none" ? "" : v, designationLibre: "" })}
+                              >
+                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Article du catalogue…" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">— Désignation libre —</SelectItem>
+                                  {allArticles.map((a) => (
+                                    <SelectItem key={a.id} value={a.id}>{a.code} — {a.designation}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {!l.articleId && (
+                                <Input
+                                  value={l.designationLibre}
+                                  onChange={(e) => updateEditLigne(l.id, { designationLibre: e.target.value })}
+                                  placeholder="Désignation libre…"
+                                  className="h-8 text-xs"
+                                />
+                              )}
+                            </div>
+                            <div className="col-span-1 pt-2 text-center text-xs text-muted-foreground">{art?.unite ?? ""}</div>
+                            <div className="col-span-2">
+                              <Input
+                                type="number" min="0" placeholder="Qté"
+                                value={l.quantite}
+                                onChange={(e) => updateEditLigne(l.id, { quantite: e.target.value })}
+                                className="h-9 text-right tabular-nums text-xs"
+                              />
+                            </div>
+                            <div className="col-span-2 pt-2 text-right text-xs tabular-nums text-muted-foreground">
+                              {art && sub > 0 && `${sub.toLocaleString("fr-SN")} F`}
+                            </div>
+                            <div className="col-span-1 text-right">
+                              <Button type="button" variant="ghost" size="icon"
+                                onClick={() => removeEditLigne(l.id)}
+                                disabled={editLignes.length === 1}
+                                className="h-9 w-9 text-muted-foreground hover:text-destructive">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {editTotal > 0 && (
+                      <div className="flex justify-between px-3 py-2 bg-muted/40 border-t border-border text-sm">
+                        <span className="font-medium">Total estimé</span>
+                        <span className="font-bold tabular-nums">{editTotal.toLocaleString("fr-SN")} FCFA</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Boutons d'action selon le statut */}
+                  {isBrouillon ? (
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={handleSave} disabled={!!actionLoading}>
+                        {actionLoading === "save" && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />}
+                        Enregistrer les modifications
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Annuler</Button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 flex-wrap pt-1 border-t border-orange-200">
+                      <Button
+                        size="sm"
+                        className="gap-1.5 bg-orange-600 hover:bg-orange-700 text-white"
+                        onClick={handleSaveAndResubmit}
+                        disabled={!!actionLoading}
+                      >
+                        {actionLoading === "saveResubmit" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                        Enregistrer et resoumettre
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={handleSave} disabled={!!actionLoading}
+                        className="border-orange-300 text-orange-700 hover:bg-orange-100">
+                        {actionLoading === "save" && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />}
+                        Enregistrer sans resoumettre
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditing(false)} className="text-muted-foreground">
+                        Annuler l'édition
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Button
+                  size="sm" variant="outline" onClick={openEdit}
+                  className={`gap-1.5 ${isBrouillon ? "border-amber-300 text-amber-700 hover:bg-amber-100" : "border-orange-300 text-orange-700 hover:bg-orange-100"}`}
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  {isBrouillon ? "Modifier le brouillon" : "Modifier la demande"}
+                </Button>
+              )}
+
+              {/* Actions principales hors édition */}
+              {!editing && (
+                <div className={`flex items-center gap-2 flex-wrap pt-1 border-t ${isBrouillon ? "border-amber-200" : "border-orange-200"}`}>
+                  {isBrouillon ? (
+                    <>
+                      <Button className="gap-1.5 bg-green-600 hover:bg-green-700 text-white" onClick={handleSubmitDraft} disabled={!!actionLoading}>
+                        {actionLoading === "submit" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                        Soumettre la demande
+                      </Button>
+                      <Button variant="outline" className="gap-1.5 text-destructive border-destructive/30 hover:border-destructive/60 hover:bg-destructive/5" onClick={handleCancel} disabled={!!actionLoading}>
+                        {actionLoading === "cancel" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        Annuler la demande
+                      </Button>
+                    </>
+                  ) : (
+                    <Button variant="outline" className="gap-1.5 border-orange-300 text-orange-700 hover:bg-orange-100" onClick={handleResubmit} disabled={!!actionLoading}>
+                      {actionLoading === "resubmit" ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                      Resoumettre sans modification
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Panneau d'action — validation */}
           {canValidate && (
             <div className="rounded-xl bg-gradient-to-br from-accent-soft to-card border border-accent/20 shadow-sm p-5">
@@ -296,7 +644,7 @@ export default function DemandeDetail() {
                   disabled={!!actionLoading}
                 >
                   {actionLoading === "reject" ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-                  Rejeter
+                  Retourner au demandeur
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-3">
@@ -313,31 +661,36 @@ export default function DemandeDetail() {
             </div>
           )}
 
-          {/* Bannière "Complément requis" pour le demandeur */}
-          {isEnComplement && canCreateRequest && (
-            <div className="rounded-xl border border-warning/40 bg-warning-soft p-5">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="font-semibold text-sm">Complément d'information requis</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Le validateur a demandé des informations complémentaires. Mettez à jour votre demande puis resoumettez-la.
-                  </p>
-                  <Button
-                    className="mt-3 gap-1.5"
-                    onClick={handleResubmit}
-                    disabled={!!actionLoading}
-                  >
-                    {actionLoading === "resubmit" ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
-                    Renouveler la soumission
-                  </Button>
-                </div>
+          {/* Panneau APPROUVEE — action acheteur */}
+          {d.statut === "APPROUVEE" && canCreatePO && (
+            <div className="rounded-xl border-2 border-green-300 bg-green-50 p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-600" />
+                <h2 className="font-semibold text-green-800">Demande approuvée — prête à être mise en commande</h2>
               </div>
+              <p className="text-sm text-green-700">
+                Cette demande a obtenu toutes les validations. Créez un bon de commande fournisseur pour déclencher l'approvisionnement.
+              </p>
+              <NewCommandeDialog
+                trigger={
+                  <Button className="gap-1.5 bg-green-600 hover:bg-green-700 text-white">
+                    <ShoppingCart className="w-4 h-4" /> Créer un bon de commande
+                  </Button>
+                }
+                initialLines={(d.lignes ?? [])
+                  .filter((l: any) => l.article_id)
+                  .map((l: any) => ({
+                    articleId: l.article_id,
+                    quantite: String(l.qte_approuvee ?? l.qte_demandee),
+                    prixMoyen: l.article_prix_moyen ? String(l.article_prix_moyen) : "",
+                  }))}
+                onSuccess={() => navigate("/achats")}
+              />
             </div>
           )}
 
           {/* Demande clôturée / approuvée — message informatif */}
-          {isTerminal && !["EN_COMPLEMENT"].includes(d.statut) && (
+          {isTerminal && !["EN_COMPLEMENT"].includes(d.statut) && !(d.statut === "APPROUVEE" && canCreatePO) && (
             <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground flex items-center gap-2">
               <Check className="w-4 h-4 shrink-0" />
               Cette demande est clôturée — aucune action supplémentaire n'est requise.

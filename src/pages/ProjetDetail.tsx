@@ -1,15 +1,20 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Loader2, Building2, FileText, Package, ArrowLeftRight,
   ShoppingCart, ClipboardCheck, TrendingUp, MapPin, User, Calendar,
-  AlertCircle, ChevronRight, BarChart3, Wallet,
+  AlertCircle, ChevronRight, Wallet, History,
 } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { projectsApi, budgetLotsApi } from "@/lib/api";
 import { NewBudgetLotDialog } from "@/components/dialogs/NewBudgetLotDialog";
+import { NewSiteDialog } from "@/components/dialogs/NewSiteDialog";
+import { EditProjetDialog } from "@/components/dialogs/EditProjetDialog";
+import { SuspendreProjetDialog } from "@/components/dialogs/SuspendreProjetDialog";
+import { SupprimerProjetDialog } from "@/components/dialogs/SupprimerProjetDialog";
+import { RelancerProjetDialog } from "@/components/dialogs/RelancerProjetDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   formatDate, formatEur, statutDemandeLabel, statutDemandeTone,
@@ -62,6 +67,7 @@ function EmptyState({ message }: { message: string }) {
 export default function ProjetDetail() {
   const { id } = useParams<{ id: string }>();
   const { hasRole } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +76,11 @@ export default function ProjetDetail() {
   const reloadLots = () => {
     if (!id) return;
     budgetLotsApi.list({ project_id: id }).then(setBudgetLots).catch(() => {});
+  };
+
+  const reloadProject = () => {
+    if (!id) return;
+    projectsApi.detail(id).then(setData).catch(() => {});
   };
 
   useEffect(() => {
@@ -106,6 +117,8 @@ export default function ProjetDetail() {
     );
   }
 
+  const isActif = data.statut === "ACTIF";
+  const isSuspendu = data.statut === "SUSPENDU";
   const budget = Number(data.budget_initial) || 0;
   const consomme = Number(data.budget_consomme) || 0;
   const pct = budget > 0 ? Math.round((consomme / budget) * 100) : 0;
@@ -118,6 +131,7 @@ export default function ProjetDetail() {
   const receipts: any[] = data.receipts ?? [];
   const transfers: any[] = data.transfers ?? [];
   const sites: any[] = data.sites ?? [];
+  const statusLogs: any[] = data.statusLogs ?? [];
 
   return (
     <>
@@ -138,6 +152,36 @@ export default function ProjetDetail() {
               <div className="flex items-center gap-2 mb-2">
                 <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded text-muted-foreground">{data.code}</span>
                 <StatusBadge tone={statutProjetTone(data.statut)}>{data.statut}</StatusBadge>
+                {(hasRole("ADMIN") || hasRole("CHEF_PROJET")) && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <EditProjetDialog
+                      project={data}
+                      onSuccess={(updated) => setData((prev: any) => ({ ...prev, ...updated }))}
+                    />
+                    {isActif && (
+                      <SuspendreProjetDialog
+                        projectId={id!}
+                        projectNom={data.nom}
+                        onSuccess={(updated) => setData((prev: any) => ({ ...prev, ...updated }))}
+                      />
+                    )}
+                    {isSuspendu && (
+                      <RelancerProjetDialog
+                        projectId={id!}
+                        projectNom={data.nom}
+                        onSuccess={(updated) => setData((prev: any) => ({ ...prev, ...updated }))}
+                      />
+                    )}
+                    {(isActif || isSuspendu) && (
+                      <SupprimerProjetDialog
+                        projectId={id!}
+                        projectNom={data.nom}
+                        projectCode={data.code}
+                        onSuccess={() => navigate("/projets")}
+                      />
+                    )}
+                  </div>
+                )}
               </div>
               <h1 className="text-2xl font-bold text-foreground leading-tight">{data.nom}</h1>
               <p className="text-sm text-muted-foreground mt-1.5 flex items-center gap-4 flex-wrap">
@@ -182,6 +226,22 @@ export default function ProjetDetail() {
         </div>
       </div>
 
+      {/* Bannière suspension */}
+      {isSuspendu && (
+        <div className="rounded-xl border border-orange-300 bg-orange-50 px-5 py-4 flex items-start gap-3 text-orange-800">
+          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-orange-500" />
+          <div>
+            <p className="font-semibold text-sm">Projet suspendu</p>
+            <p className="text-sm mt-0.5">
+              Aucune nouvelle action ne peut être effectuée sur ce projet (demandes, sites, lots).
+              {data.motif_statut && (
+                <span className="block mt-1 text-orange-700">Motif : {data.motif_statut}</span>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Tabs */}
       <Tabs defaultValue="budget" className="space-y-4">
         <TabsList className="h-auto flex-wrap gap-1 bg-muted/50 p-1 rounded-xl">
@@ -198,6 +258,7 @@ export default function ProjetDetail() {
             { value: "achats", label: "Achats", count: purchaseOrders.length, icon: ShoppingCart },
             { value: "receptions", label: "Réceptions", count: receipts.length, icon: ClipboardCheck },
             { value: "transferts", label: "Transferts", count: transfers.length, icon: ArrowLeftRight },
+            { value: "historique", label: "Historique", count: statusLogs.length, icon: History },
           ].map(({ value, label, count, icon: Icon }) => (
             <TabsTrigger key={value} value={value} className="gap-1.5 text-xs sm:text-sm px-3 py-2 rounded-lg">
               <Icon className="w-3.5 h-3.5" />
@@ -210,7 +271,7 @@ export default function ProjetDetail() {
         {/* ─── BUDGET LOTS ─── */}
         <TabsContent value="budget">
           <div className="space-y-4">
-            {(hasRole("ADMIN") || hasRole("CHEF_PROJET")) && (
+            {(hasRole("ADMIN") || hasRole("CHEF_PROJET")) && isActif && (
               <div className="flex justify-end">
                 <NewBudgetLotDialog projectId={id!} onSuccess={reloadLots} />
               </div>
@@ -252,6 +313,11 @@ export default function ProjetDetail() {
 
         {/* ─── CHANTIERS ─── */}
         <TabsContent value="chantiers">
+          {(hasRole("ADMIN") || hasRole("CHEF_PROJET")) && isActif && (
+            <div className="flex justify-end mb-4">
+              <NewSiteDialog projectId={id!} onSuccess={reloadProject} />
+            </div>
+          )}
           {sites.length === 0 ? (
             <EmptyState message="Aucun chantier associé à ce projet." />
           ) : (
@@ -433,10 +499,6 @@ export default function ProjetDetail() {
 
         {/* ─── ACHATS ─── */}
         <TabsContent value="achats">
-          <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2 border border-border">
-            <BarChart3 className="w-3.5 h-3.5 shrink-0" />
-            Affichage des 50 dernières commandes — le filtrage par projet sera disponible prochainement.
-          </div>
           {purchaseOrders.length === 0 ? (
             <EmptyState message="Aucune commande enregistrée." />
           ) : (
@@ -473,10 +535,6 @@ export default function ProjetDetail() {
 
         {/* ─── RÉCEPTIONS ─── */}
         <TabsContent value="receptions">
-          <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2 border border-border">
-            <BarChart3 className="w-3.5 h-3.5 shrink-0" />
-            Affichage des 50 dernières réceptions — le filtrage par projet sera disponible prochainement.
-          </div>
           {receipts.length === 0 ? (
             <EmptyState message="Aucune réception enregistrée." />
           ) : (
@@ -516,10 +574,6 @@ export default function ProjetDetail() {
 
         {/* ─── TRANSFERTS ─── */}
         <TabsContent value="transferts">
-          <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2 border border-border">
-            <BarChart3 className="w-3.5 h-3.5 shrink-0" />
-            Affichage des 50 derniers transferts — le filtrage par projet sera disponible prochainement.
-          </div>
           {transfers.length === 0 ? (
             <EmptyState message="Aucun transfert enregistré." />
           ) : (
@@ -554,6 +608,59 @@ export default function ProjetDetail() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </TabsContent>
+        {/* ─── HISTORIQUE STATUTS ─── */}
+        <TabsContent value="historique">
+          {statusLogs.length === 0 ? (
+            <EmptyState message="Aucun changement de statut enregistré pour ce projet." />
+          ) : (
+            <div className="relative">
+              {/* Timeline */}
+              <div className="space-y-0">
+                {statusLogs.map((log: any, idx: number) => {
+                  const isFirst = idx === 0;
+                  const tone =
+                    log.nouveau_statut === "ACTIF"     ? { bg: "bg-green-50",  border: "border-green-200",  dot: "bg-green-500",  label: "text-green-700"  } :
+                    log.nouveau_statut === "SUSPENDU"  ? { bg: "bg-orange-50", border: "border-orange-200", dot: "bg-orange-500", label: "text-orange-700" } :
+                    log.nouveau_statut === "SUPPRIME"  ? { bg: "bg-red-50",    border: "border-red-200",    dot: "bg-red-500",    label: "text-red-700"    } :
+                    log.nouveau_statut === "CLOTURE"   ? { bg: "bg-muted",     border: "border-border",     dot: "bg-muted-foreground", label: "text-muted-foreground" } :
+                                                        { bg: "bg-card",       border: "border-border",     dot: "bg-accent",     label: "text-accent"     };
+                  return (
+                    <div key={log.id} className="flex gap-4 pb-0">
+                      {/* Timeline line + dot */}
+                      <div className="flex flex-col items-center">
+                        <div className={`w-3 h-3 rounded-full shrink-0 mt-4 ${tone.dot} ${isFirst ? "ring-2 ring-offset-2 ring-current" : ""}`} />
+                        {idx < statusLogs.length - 1 && (
+                          <div className="w-px flex-1 bg-border mt-1 mb-0" style={{ minHeight: "2rem" }} />
+                        )}
+                      </div>
+                      {/* Card */}
+                      <div className={`flex-1 mb-4 rounded-xl border ${tone.border} ${tone.bg} px-4 py-3`}>
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="text-muted-foreground font-mono text-xs">{log.ancien_statut}</span>
+                            <span className="text-muted-foreground">→</span>
+                            <span className={`font-semibold ${tone.label}`}>{log.nouveau_statut}</span>
+                          </div>
+                          <span className="text-xs text-muted-foreground tabular-nums">
+                            {log.created_at ? formatDate(log.created_at) : "—"}
+                          </span>
+                        </div>
+                        {log.motif && (
+                          <p className="text-sm mt-1.5 text-foreground">{log.motif}</p>
+                        )}
+                        {log.user_nom && (
+                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                            <User className="w-3 h-3" /> {log.user_nom}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </TabsContent>

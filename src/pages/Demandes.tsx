@@ -27,9 +27,19 @@ type ApiDemande = {
   statut: string;
 };
 
+// Statuts visibles selon la position dans le circuit de validation
+const VISIBLE_FROM: Record<string, string[]> = {
+  REQUEST_VALIDATE_BUDGET:    ["BROUILLON", "SOUMISE"],
+  REQUEST_VALIDATE_DIRECTION: ["BROUILLON", "SOUMISE", "EN_COMPLEMENT", "VALIDATION_BUDGETAIRE"],
+};
+
+const ACHETEUR_STATUTS = ["APPROUVEE", "EN_ACHAT", "EN_PREPARATION", "MISE_A_DISPO"];
+
 export default function DemandesPage() {
-  const { hasPermission } = useAuth();
-  const canCreate = hasPermission("REQUEST_CREATE");
+  const { hasPermission, hasRole } = useAuth();
+  const canCreate  = hasPermission("REQUEST_CREATE");
+  const isAdmin    = hasRole("ADMIN");
+  const isAcheteur = hasRole("ACHETEUR") && !isAdmin;
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -52,15 +62,35 @@ export default function DemandesPage() {
     [refreshKey],
   );
 
+  // Filtre selon la position dans le circuit : chaque valideur ne voit que
+  // les demandes ayant déjà franchi les étapes qui le précèdent.
+  const roleVisible = useMemo(() => {
+    if (isAdmin) return data;
+    if (isAcheteur) return data.filter((d) => ACHETEUR_STATUTS.includes(d.statut));
+    for (const [perm, hidden] of Object.entries(VISIBLE_FROM)) {
+      if (hasPermission(perm)) return data.filter((d) => !hidden.includes(d.statut));
+    }
+    return data;
+  }, [data, isAdmin, isAcheteur, hasPermission]);
+
+  // Onglet "À valider" adapté au rôle
+  const attenteStatuts: string[] = (() => {
+    if (isAcheteur)                                              return ["APPROUVEE"];
+    if (!isAdmin && hasPermission("REQUEST_VALIDATE_BUDGET"))    return ["VALIDATION_BUDGETAIRE"];
+    if (!isAdmin && hasPermission("REQUEST_VALIDATE_DIRECTION")) return ["VALIDATION_DIRECTION"];
+    if (!isAdmin && hasPermission("REQUEST_VALIDATE_TECH"))      return ["SOUMISE"];
+    return ["SOUMISE", "VALIDATION_TECHNIQUE", "VALIDATION_BUDGETAIRE", "VALIDATION_DIRECTION"];
+  })();
+
   const filtered = useMemo(() => {
-    return data.filter((d) => {
-      if (filter === "attente" && !["SOUMISE", "VALIDATION_TECHNIQUE", "VALIDATION_BUDGETAIRE", "VALIDATION_DIRECTION"].includes(d.statut)) return false;
+    return roleVisible.filter((d) => {
+      if (filter === "attente"  && !attenteStatuts.includes(d.statut)) return false;
       if (filter === "approuvee" && !["APPROUVEE", "EN_ACHAT", "EN_PREPARATION", "MISE_A_DISPO"].includes(d.statut)) return false;
-      if (filter === "cloturee" && !["CLOTUREE", "REJETEE"].includes(d.statut)) return false;
+      if (filter === "cloturee"  && !["CLOTUREE", "REJETEE"].includes(d.statut)) return false;
       if (search && !`${d.numero} ${d.motif ?? ""} ${d.requester_nom ?? ""}`.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [data, filter, search]);
+  }, [roleVisible, filter, search, attenteStatuts]);
 
   return (
     <>
@@ -82,8 +112,8 @@ export default function DemandesPage() {
         <div className="flex flex-col lg:flex-row lg:items-center gap-3 p-4 border-b border-border">
           <Tabs value={filter} onValueChange={setFilter} className="w-full lg:w-auto">
             <TabsList>
-              <TabsTrigger value="all">Toutes <span className="ml-1.5 text-xs text-muted-foreground">{data.length}</span></TabsTrigger>
-              <TabsTrigger value="attente">À valider</TabsTrigger>
+              <TabsTrigger value="all">Toutes <span className="ml-1.5 text-xs text-muted-foreground">{roleVisible.length}</span></TabsTrigger>
+              <TabsTrigger value="attente">{isAcheteur ? "À commander" : "À valider"} <span className="ml-1.5 text-xs text-muted-foreground">{roleVisible.filter(d => attenteStatuts.includes(d.statut)).length || ""}</span></TabsTrigger>
               <TabsTrigger value="approuvee">En cours</TabsTrigger>
               <TabsTrigger value="cloturee">Clôturées</TabsTrigger>
             </TabsList>

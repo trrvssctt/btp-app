@@ -63,13 +63,19 @@ export const projectsApi = {
   get: (id: string) => api.get<{ data: any }>(`/projects/${id}`).then((r) => r.data.data),
   detail: (id: string) => api.get<{ data: any }>(`/projects/${id}/detail`).then((r) => r.data.data),
   create: (p: any) => api.post<{ data: any }>("/projects", p).then((r) => r.data.data),
+  update: (id: string, p: Partial<{ code: string; nom: string; client: string; budget_initial: number; statut: string; motif_statut: string; date_debut: string; date_fin: string }>) =>
+    api.put<{ data: any }>(`/projects/${id}`, p).then((r) => r.data.data),
 };
 
 export const articlesApi = {
   list: (search?: string) =>
     api.get<{ data: any[] }>("/articles", { params: search ? { search } : undefined }).then((r) => r.data.data),
-  create: (a: any) => api.post<{ data: any }>("/articles", a).then((r) => r.data.data),  update: (id: string, body: { code?: string; designation?: string; nature?: string; prix_moyen?: number; seuil_min?: number; actif?: boolean }) =>
-    api.put<{ data: any }>(`/articles/${id}`, body).then((r) => r.data.data),};
+  get: (id: string) => api.get<{ data: any }>(`/articles/${id}`).then((r) => r.data.data),
+  create: (a: any) => api.post<{ data: any }>("/articles", a).then((r) => r.data.data),
+  update: (id: string, body: { code?: string; designation?: string; famille_id?: string | null; unite_id?: string | null; nature?: string; prix_moyen?: number | null; seuil_min?: number | null; actif?: boolean }) =>
+    api.put<{ data: any }>(`/articles/${id}`, body).then((r) => r.data.data),
+  remove: (id: string) => api.delete(`/articles/${id}`),
+};
 
 export const depotsApi = {
   list: () => api.get<{ data: any[] }>("/depots").then((r) => r.data.data),
@@ -97,6 +103,8 @@ export const suppliersApi = {
 export const sitesApi = {
   list: (params?: { project_id?: string }) =>
     api.get<{ data: any[] }>("/sites", { params }).then((r) => r.data.data),
+  create: (body: { project_id: string; code: string; nom: string; localisation?: string; responsable?: string; statut?: string }) =>
+    api.post<{ data: any }>("/sites", body).then((r) => r.data.data),
 };
 
 export const articleFamiliesApi = {
@@ -117,6 +125,7 @@ export const transfersApi = {
 export const purchaseOrdersApi = {
   list: (params?: { statut?: string; supplier_id?: string }) =>
     api.get<{ data: any[] }>("/purchase-orders", { params }).then((r) => r.data.data),
+  get: (id: string) => api.get<{ data: any }>(`/purchase-orders/${id}`).then((r) => r.data.data),
   create: (body: { supplier_id: string; statut?: string; lignes: { article_id?: string; designation_libre?: string; quantite: number; prix_unitaire: number }[] }) =>
     api.post<{ data: any }>("/purchase-orders", body).then((r) => r.data.data),
 };
@@ -124,7 +133,14 @@ export const purchaseOrdersApi = {
 export const receiptsApi = {
   list: (params?: { purchase_order_id?: string; depot_id?: string }) =>
     api.get<{ data: any[] }>("/receipts", { params }).then((r) => r.data.data),
-  create: (body: { purchase_order_id?: string; depot_id: string; date_reception: string; conformite?: string; reserve?: string }) =>
+  create: (body: {
+    purchase_order_id?: string;
+    depot_id: string;
+    date_reception: string;
+    conformite?: string;
+    reserve?: string;
+    lignes?: { article_id?: string | null; designation_libre?: string | null; quantite_recue: number; purchase_order_line_id?: string }[];
+  }) =>
     api.post<{ data: any }>("/receipts", body).then((r) => r.data.data),
 };
 
@@ -133,6 +149,10 @@ export const requestsApi = {
     api.get<{ data: any[] }>("/requests", { params }).then((r) => r.data.data),
   get: (id: string) => api.get<{ data: any }>(`/requests/${id}`).then((r) => r.data.data),
   create: (r: any) => api.post<{ data: any }>("/requests", r).then((res) => res.data.data),
+  update: (id: string, body: { urgence?: string; motif?: string; date_souhaitee?: string | null; lignes?: Array<{ article_id?: string | null; designation_libre?: string | null; qte_demandee: number }> }) =>
+    api.put<{ data: any }>(`/requests/${id}`, body).then((r) => r.data.data),
+  cancel: (id: string) => api.delete<{ data: any }>(`/requests/${id}`).then((r) => r.data.data),
+  submit: (id: string) => api.post<{ data: any }>(`/requests/${id}/submit`, {}).then((r) => r.data.data),
   approve: (id: string, body: { etape: string; decision: string; commentaire?: string }) =>
     api.post<{ data: any }>(`/requests/${id}/approvals`, body).then((r) => r.data.data),
   complement: (id: string, commentaire?: string) =>
