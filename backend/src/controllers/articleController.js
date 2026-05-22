@@ -3,6 +3,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const validate = require('../middleware/validate');
 const HttpError = require('../utils/HttpError');
 const model = require('../models/articleModel');
+const auditLog = require('../utils/auditLog');
 
 const schema = z.object({
   code: z.string().min(1).max(40),
@@ -28,20 +29,28 @@ exports.get = asyncHandler(async (req, res) => {
 exports.create = [
   validate(schema),
   asyncHandler(async (req, res) => {
-    res.status(201).json({ data: await model.create(req.body) });
+    const a = await model.create(req.body);
+    auditLog({ req, action: 'CREATE', entity_type: 'Article', entity_id: a.id, reference: a.code, detail: `Création article : ${a.designation} (${a.nature})` });
+    res.status(201).json({ data: a });
   }),
 ];
 
 exports.update = [
   validate(schema.partial()),
   asyncHandler(async (req, res) => {
+    const used = await model.checkUsage(req.params.id);
+    if (used) throw new HttpError(409, 'Cet article est référencé dans des documents existants (demandes, bons de commande, mouvements…) et ne peut pas être modifié.');
     const updated = await model.update(req.params.id, req.body);
     if (!updated) throw new HttpError(404, 'Article not found');
+    auditLog({ req, action: 'UPDATE', entity_type: 'Article', entity_id: updated.id, reference: updated.code, detail: `Modification article : ${updated.designation}` });
     res.json({ data: updated });
   }),
 ];
 
 exports.remove = asyncHandler(async (req, res) => {
+  const used = await model.checkUsage(req.params.id);
+  if (used) throw new HttpError(409, 'Cet article est référencé dans des documents existants et ne peut pas être supprimé. Désactivez-le manuellement si nécessaire.');
   await model.remove(req.params.id);
+  auditLog({ req, action: 'DELETE', entity_type: 'Article', entity_id: req.params.id, detail: 'Désactivation article (suppression logique)' });
   res.status(204).end();
 });

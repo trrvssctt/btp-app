@@ -3,6 +3,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const validate = require('../middleware/validate');
 const HttpError = require('../utils/HttpError');
 const model = require('../models/purchaseOrderModel');
+const auditLog = require('../utils/auditLog');
 
 const lineSchema = z.object({
   article_id: z.string().uuid().optional().nullable(),
@@ -30,6 +31,8 @@ exports.get = asyncHandler(async (req, res) => {
 exports.create = [
   validate(createSchema),
   asyncHandler(async (req, res) => {
-    res.status(201).json({ data: await model.create(req.body) });
+    const po = await model.create(req.body);
+    auditLog({ req, action: 'CREATE', entity_type: 'BonCommande', entity_id: po.id, reference: po.numero, detail: `Création BC fournisseur — ${po.lignes?.length ?? '?'} ligne(s)` });
+    res.status(201).json({ data: po });
   }),
 ];

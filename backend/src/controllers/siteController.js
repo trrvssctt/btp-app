@@ -3,6 +3,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const validate = require('../middleware/validate');
 const HttpError = require('../utils/HttpError');
 const model = require('../models/siteModel');
+const auditLog = require('../utils/auditLog');
 
 const schema = z.object({
   project_id: z.string().uuid(),
@@ -26,7 +27,9 @@ exports.get = asyncHandler(async (req, res) => {
 exports.create = [
   validate(schema),
   asyncHandler(async (req, res) => {
-    res.status(201).json({ data: await model.create(req.body) });
+    const s = await model.create(req.body);
+    auditLog({ req, action: 'CREATE', entity_type: 'Site', entity_id: s.id, reference: s.code, detail: `Création site : ${s.nom}` });
+    res.status(201).json({ data: s });
   }),
 ];
 

@@ -3,6 +3,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const validate = require('../middleware/validate');
 const HttpError = require('../utils/HttpError');
 const model = require('../models/budgetLotModel');
+const auditLog = require('../utils/auditLog');
 
 const schema = z.object({
   project_id: z.string().uuid(),
@@ -24,7 +25,9 @@ exports.get = asyncHandler(async (req, res) => {
 exports.create = [
   validate(schema),
   asyncHandler(async (req, res) => {
-    res.status(201).json({ data: await model.create(req.body) });
+    const bl = await model.create(req.body);
+    auditLog({ req, action: 'CREATE', entity_type: 'LotBudgetaire', entity_id: bl.id, reference: bl.code, detail: `Création lot : ${bl.libelle} — ${bl.montant_prevu} FCFA` });
+    res.status(201).json({ data: bl });
   }),
 ];
 
