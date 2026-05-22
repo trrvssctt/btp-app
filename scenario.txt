@@ -1,0 +1,813 @@
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║            SCÉNARIO DE TEST COMPLET — BTP MANAGER                              ║
+║            Entreprise : BTP Sénégal SARL                                       ║
+║            Date scénario : 21 mai 2026                                         ║
+║            Couverture : tous les rôles, toutes les fonctionnalités             ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+COMPTES UTILISATEURS (mots de passe en clair)
+─────────────────────────────────────────────
+  admin@btp.local                →  Admin123!          (ADMIN)
+  amadou.diallo@btp-sn.com      →  Amadou2025!         (CHEF_PROJET)
+  cheikh.diagne@btp-sn.com      →  Cheikh2025!         (CHEF_PROJET)
+  fatou.ndoye@btp-sn.com        →  Fatou2025!          (CONDUCTEUR)
+  mariama.ba@btp-sn.com         →  Mariama2025!        (CONDUCTEUR)
+  aissatou.mbaye@btp-sn.com     →  Aissatou2025!       (DEMANDEUR)
+  oumar.sarr@btp-sn.com         →  Oumar2025!          (DEMANDEUR)
+  elhadji.ndiaye@btp-sn.com     →  ElHadji2025!        (RESP_TECHNIQUE)
+  aminata.diop@btp-sn.com       →  Aminata2025!        (CONTROLEUR)
+  moussa.faye@btp-sn.com        →  Moussa2025!         (ACHETEUR)
+  ibrahima.sow@btp-sn.com       →  Ibrahim2025!        (MAGASINIER)
+  daf@btp-sn.com                →  Daf2025!            (DAF)
+
+URL locale : http://localhost:5173
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ÉTAPE 1 — ADMINISTRATION GÉNÉRALE
+Rôle : ADMIN  |  Compte : admin@btp.local / Admin123!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1.1  CONNEXION
+     → Aller sur /login
+     → Email : admin@btp.local | Mot de passe : Admin123!
+     → Vérifier : redirection vers le Dashboard
+     → Vérifier : menu latéral complet visible (toutes les sections)
+
+1.2  TABLEAU DE BORD — LECTURE DES KPI
+     → Vérifier les cartes KPI : Projets actifs, Demandes en cours,
+       Valeur stock total, Alertes seuil
+     → Vérifier le graphique "Mouvements de stock par mois"
+     → Vérifier la liste des dernières demandes
+
+1.3  CRÉATION D'UN NOUVEAU PROJET
+     → Menu : Projets → Nouveau projet
+     Données à saisir :
+       Code          : PRJ-SN-006
+       Nom           : Construction École Primaire — Dakar Banlieue (Pikine)
+       Client        : Mairie de Pikine
+       Budget initial: 650 000 000 FCFA
+       Statut        : ACTIF
+       Date début    : 02/06/2026
+       Date fin      : 30/11/2027
+     → Valider → Vérifier le projet apparaît dans la liste
+
+1.4  AJOUT D'UN SITE AU PROJET PRJ-SN-006
+     → Ouvrir PRJ-SN-006 → Ajouter un site
+     Données :
+       Code site     : SN6-001
+       Nom           : Bâtiment Principal (Classes + Administration)
+       Localisation  : Pikine — Quartier Guinaw Rail
+       Responsable   : Mme Fatou Ndoye
+     → Valider
+
+1.5  AJOUT D'UN LOT BUDGÉTAIRE
+     → Projets → PRJ-SN-006 → Lots budgétaires → Nouveau lot
+     Données :
+       Code   : LOT-01
+       Libellé: Gros œuvre
+       Montant: 320 000 000 FCFA
+     → Valider
+     → Ajouter un second lot :
+       Code   : LOT-02
+       Libellé: Finitions & second œuvre
+       Montant: 180 000 000 FCFA
+
+1.6  CRÉATION D'UN ARTICLE MANQUANT
+     → Menu : Articles → Nouvel article
+     Données :
+       Code         : AGGLO-20
+       Désignation  : Agglos solides 20×20×40 cm
+       Famille      : MACONNERIE
+       Unité        : U
+       Nature       : STOCKABLE
+       Prix moyen   : 480 FCFA
+       Seuil minimum: 1 000 unités
+     → Valider
+
+1.7  CONSULTATION AUDIT
+     → Menu : Audit
+     → Vérifier les 5 dernières actions enregistrées
+     → Filtrer par type "INSERT" → Observer les créations récentes
+
+1.8  DÉCONNEXION
+     → Cliquer sur le profil → Se déconnecter
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ÉTAPE 2 — DEMANDE D'ACHAT (DEMANDEUR)
+Rôle : DEMANDEUR  |  Compte : aissatou.mbaye@btp-sn.com / Aissatou2025!
+Contexte : Aïssatou est chargée du câblage électrique sur le Lycée de Thiès
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2.1  CONNEXION
+     → Email : aissatou.mbaye@btp-sn.com | Mot de passe : Aissatou2025!
+     → Vérifier : menu limité (Demandes, Notifications)
+
+2.2  CRÉATION D'UNE DEMANDE D'ACHAT (DM-2026-001)
+     → Menu : Demandes → Nouvelle demande
+     Données :
+       Projet         : Construction Lycée Technique Régional de Thiès (PRJ-SN-001)
+       Site           : Bloc Administratif & Salles de Cours (SN1-001)
+       Phase          : Corps d'état secondaires
+       Lot budgétaire : LOT-04 (Électricité)
+       Urgence        : NORMALE
+       Motif          : Second passage câblage bâtiment administratif —
+                        préparation réception provisoire décembre 2026
+
+     Lignes de la demande :
+       Ligne 1 → Article : Câble électrique 3G2.5 — rouleau 100 m (CAB-3G25)
+                 Quantité demandée : 12 rouleaux
+       Ligne 2 → Article : Câble électrique 3G1.5 — rouleau 100 m (CAB-3G15)
+                 Quantité demandée : 18 rouleaux
+       Ligne 3 → Article : Interrupteur simple allumage encastré (INTER-SIMPLE)
+                 Quantité demandée : 45 unités
+       Ligne 4 → Article : Prise de courant 2P+T encastrée (PRISE-2P)
+                 Quantité demandée : 60 unités
+       Ligne 5 → Article : Disjoncteur 25A modulaire (DISJONCT-25A)
+                 Quantité demandée : 20 unités
+
+     → Enregistrer en brouillon d'abord
+     → Vérifier que la demande apparaît en statut "BROUILLON"
+     → Soumettre la demande → Statut doit passer à "SOUMISE"
+     → Vérifier la notification de confirmation
+
+2.3  CONSULTATION DE LA DEMANDE DM-2025-009 (brouillon existant)
+     → Ouvrir DM-2025-009 (EPI — renouvellement dotation)
+     → Soumettre cette demande
+     → Statut passe à "SOUMISE"
+
+2.4  DÉCONNEXION
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ÉTAPE 3 — VALIDATION TECHNIQUE
+Rôle : RESP_TECHNIQUE  |  Compte : elhadji.ndiaye@btp-sn.com / ElHadji2025!
+Contexte : El Hadji valide la pertinence technique des demandes
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3.1  CONNEXION
+     → Email : elhadji.ndiaye@btp-sn.com | Mot de passe : ElHadji2025!
+
+3.2  VALIDATION DE DM-2026-001 (câblage électrique)
+     → Menu : Demandes → Filtrer sur statut "SOUMISE"
+     → Ouvrir DM-2026-001
+     → Vérifier le détail des 5 lignes
+     → Action : Valider techniquement
+       Commentaire : "Câblage conforme au plan d'exécution révisé v3.2
+                      du 15/04/2026. Quantités cohérentes avec les métrés."
+     → Confirmer → Statut passe à "VALIDATION_BUDGETAIRE"
+
+3.3  VALIDATION DE DM-2025-009 (EPI)
+     → Ouvrir DM-2025-009
+     → Valider techniquement
+       Commentaire : "EPI conformes aux normes NF EN ISO 20345.
+                      Dotation annuelle validée."
+     → Confirmer
+
+3.4  DEMANDE DE COMPLÉMENT SUR DM-2025-008 (plomberie urgences)
+     → Ouvrir DM-2025-008 (statut SOUMISE)
+     → Action : Demander un complément d'information
+       Commentaire : "Préciser le diamètre exact des raccords et le
+                      linéaire de tube galvanisé pour l'alimentation eau chaude."
+     → Confirmer → Statut passe à "COMPLEMENT_REQUIS"
+     → Vérifier la notification envoyée à Oumar Sarr
+
+3.5  DÉCONNEXION
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ÉTAPE 4 — RÉPONSE AU COMPLÉMENT (DEMANDEUR)
+Rôle : DEMANDEUR  |  Compte : oumar.sarr@btp-sn.com / Oumar2025!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4.1  CONNEXION
+     → Email : oumar.sarr@btp-sn.com | Mot de passe : Oumar2025!
+
+4.2  NOTIFICATION DE COMPLÉMENT REQUIS
+     → Menu : Notifications → Voir la notification concernant DM-2025-008
+     → Marquer comme lue
+
+4.3  RESOUMETTRE DM-2025-008 AVEC COMPLÉMENT
+     → Ouvrir DM-2025-008
+     → Action : Fournir le complément
+       Commentaire : "Précision apportée : raccords Ø110 PVC série S
+                      (10 unités), tube galvanisé 1 pouce — 40 ml pour
+                      alimentation ECS. Quantités inchangées par ailleurs."
+     → Resoumettre → Statut repasse à "SOUMISE"
+
+4.4  DÉCONNEXION
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ÉTAPE 5 — VALIDATION BUDGÉTAIRE (CONTROLEUR)
+Rôle : CONTROLEUR  |  Compte : aminata.diop@btp-sn.com / Aminata2025!
+Contexte : Aminata contrôle l'enveloppe budgétaire de chaque demande
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5.1  CONNEXION
+     → Email : aminata.diop@btp-sn.com | Mot de passe : Aminata2025!
+
+5.2  VALIDATION BUDGÉTAIRE DE DM-2026-001
+     → Demandes → Statut "VALIDATION_BUDGETAIRE" → Ouvrir DM-2026-001
+     → Vérifier montant estimé
+       (12 × 85 000) + (18 × 62 000) + (45 × 4 500) + (60 × 5 800) + (20 × 12 500)
+       = 1 020 000 + 1 116 000 + 202 500 + 348 000 + 250 000
+       = 2 936 500 FCFA
+     → Approbation budgétaire
+       Quantités approuvées :
+         CAB-3G25     → 12 rouleaux (conforme)
+         CAB-3G15     → 18 rouleaux (conforme)
+         INTER-SIMPLE → 45 unités (conforme)
+         PRISE-2P     → 60 unités (conforme)
+         DISJONCT-25A → 20 unités (conforme)
+       Commentaire : "Budget LOT-04 disponible : 245 000 000 FCFA.
+                      Engagé à ce jour : 4 150 000 FCFA (DM-2025-007).
+                      Cette demande : 2 936 500 FCFA. Solde : 237 913 500 FCFA. VALIDÉ."
+     → Confirmer → Statut passe à "VALIDATION_DIRECTION"
+
+5.3  VALIDATION BUDGÉTAIRE DE DM-2025-009 (EPI)
+     → Ouvrir DM-2025-009
+       Montant estimé : 1 850 000 FCFA
+     → Approuver en totalité
+       Commentaire : "Dotation annuelle EPI conforme au plan de prévention
+                      sécurité 2026. Budget alloué suffisant."
+     → Confirmer
+
+5.4  VALIDATION BUDGÉTAIRE DE DM-2025-004 (carrelage internat)
+     → Ouvrir DM-2025-004 (statut VALIDATION_BUDGETAIRE)
+     → Approuver partiellement :
+         CARREL-30    → 420 m² (conforme)
+         CARREL-MURAL → 180 m² (conforme)
+         CIMENT-COLLE →  80 sacs (conforme)
+         PEINTURE-INT →  24 pots → Réduire à 20 pots (économie)
+       Commentaire : "Quantité peinture réduite de 24 à 20 pots après
+                      révision métrés pièces humides. Économie : 140 000 FCFA."
+     → Confirmer
+
+5.5  DÉCONNEXION
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ÉTAPE 6 — VALIDATION DIRECTION / DAF
+Rôle : DAF  |  Compte : daf@btp-sn.com / Daf2025!
+Contexte : Validation finale — signature DAF obligatoire
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6.1  CONNEXION
+     → Email : daf@btp-sn.com | Mot de passe : Daf2025!
+
+6.2  VALIDATION FINALE DE DM-2026-001
+     → Demandes → Statut "VALIDATION_DIRECTION" → Ouvrir DM-2026-001
+     → Vérifier l'historique des validations (technique + budgétaire)
+     → Approuver définitivement
+       Commentaire : "Approuvé par DAF. Bon pour ordre d'achat.
+                      Réf. engagement budgétaire DAF-2026-0089."
+     → Confirmer → Statut passe à "APPROUVEE"
+     → Vérifier la notification envoyée à Moussa Faye (ACHETEUR)
+
+6.3  VALIDATION FINALE DE DM-2025-004 (carrelage)
+     → Ouvrir DM-2025-004 (normalement en VALIDATION_DIRECTION)
+     → Approuver
+       Commentaire : "Approuvé. Finitions internat Thiès — livraison
+                      avant décembre 2026 impérative."
+     → Confirmer
+
+6.4  DÉCONNEXION
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ÉTAPE 7 — CRÉATION BON DE COMMANDE (ACHETEUR)
+Rôle : ACHETEUR  |  Compte : moussa.faye@btp-sn.com / Moussa2025!
+Contexte : Moussa transforme les demandes approuvées en bons de commande
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7.1  CONNEXION
+     → Email : moussa.faye@btp-sn.com | Mot de passe : Moussa2025!
+
+7.2  CRÉATION DU BON DE COMMANDE BC-2026-001 (câblage électrique)
+     → Menu : Achats → Nouveau bon de commande
+     Données :
+       Fournisseur : SENICO — Sanitaires & Électricité
+       Statut      : ENVOYEE (commande déjà transmise au fournisseur)
+
+     Lignes du bon :
+       Ligne 1 → Article : Câble électrique 3G2.5 (CAB-3G25)
+                 Quantité : 12 rouleaux
+                 Prix unitaire : 87 000 FCFA  (négocié, prix catalogue 85 000)
+       Ligne 2 → Article : Câble électrique 3G1.5 (CAB-3G15)
+                 Quantité : 18 rouleaux
+                 Prix unitaire : 63 500 FCFA
+       Ligne 3 → Article : Interrupteur simple allumage (INTER-SIMPLE)
+                 Quantité : 45 unités
+                 Prix unitaire : 4 200 FCFA  (remise volume)
+       Ligne 4 → Article : Prise de courant 2P+T (PRISE-2P)
+                 Quantité : 60 unités
+                 Prix unitaire : 5 500 FCFA
+       Ligne 5 → Article : Disjoncteur 25A modulaire (DISJONCT-25A)
+                 Quantité : 20 unités
+                 Prix unitaire : 11 800 FCFA
+
+     Montant total attendu :
+       (12 × 87 000) + (18 × 63 500) + (45 × 4 200) + (60 × 5 500) + (20 × 11 800)
+       = 1 044 000 + 1 143 000 + 189 000 + 330 000 + 236 000
+       = 2 942 000 FCFA
+
+     → Valider → Numéro BC-2026-001 attribué
+     → Vérifier le montant total affiché
+
+7.3  CRÉATION DU BON DE COMMANDE BC-2026-002 (EPI)
+     → Achats → Nouveau bon de commande
+     Données :
+       Fournisseur : Dépôt BTP Dakar Distribution (BTP-DEPOT)
+       Statut      : ENVOYEE
+
+     Lignes :
+       Ligne 1 → EPI Casque EN 397 (EPI-SN-CAS)
+                 Quantité : 50 | Prix unitaire : 3 500 FCFA
+       Ligne 2 → Gants manutention cuir (EPI-SN-GANT)
+                 Quantité : 100 | Prix unitaire : 2 500 FCFA
+       Ligne 3 → Veste haute visibilité (EPI-SN-VIS)
+                 Quantité : 50  | Prix unitaire : 8 500 FCFA
+       Ligne 4 → Lunettes protection (EPI-SN-LUNE)
+                 Quantité : 50  | Prix unitaire : 3 000 FCFA
+     → Valider → BC-2026-002
+
+7.4  CRÉATION DU BON DE COMMANDE BC-2026-003 (carrelage internat)
+     → Achats → Nouveau bon de commande
+     Données :
+       Fournisseur : CFAO Matériaux Sénégal (CFAO-BTP)
+       Statut      : ENVOYEE
+
+     Lignes :
+       Ligne 1 → Carrelage sol 30×30 cm (CARREL-30)
+                 Quantité : 420 m² | Prix unitaire : 8 200 FCFA
+       Ligne 2 → Faïence murale 20×30 cm (CARREL-MURAL)
+                 Quantité : 180 m² | Prix unitaire : 11 500 FCFA
+       Ligne 3 → Colle carrelage gris — sac 25 kg (CIMENT-COLLE)
+                 Quantité : 80 sacs | Prix unitaire : 4 000 FCFA
+       Ligne 4 → Peinture intérieure — bidon 20 L (PEINTURE-INT)
+                 Quantité : 20 pots | Prix unitaire : 34 000 FCFA
+
+     → Valider → BC-2026-003
+
+7.5  DÉCONNEXION
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ÉTAPE 8 — RÉCEPTION MARCHANDISES & MISE EN STOCK (MAGASINIER)
+Rôle : MAGASINIER  |  Compte : ibrahima.sow@btp-sn.com / Ibrahim2025!
+Contexte : Les livraisons arrivent au Magasin Central Dakar
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8.1  CONNEXION
+     → Email : ibrahima.sow@btp-sn.com | Mot de passe : Ibrahim2025!
+
+8.2  RÉCEPTION CONFORME — BC-2026-002 (EPI)
+     → Menu : Réceptions → Nouvelle réception
+     Données :
+       Bon de commande : BC-2026-002 (SENICO)
+         → Le système charge automatiquement les 4 lignes du BC
+       Dépôt destination : Magasin Central Dakar (MAG-DAKAR)
+       Date réception    : 21/05/2026
+       Conformité        : CONFORME
+
+     Lignes reçues (vérifier les quantités pré-remplies) :
+       EPI-SN-CAS  → Commandé : 50  | Reçu : 50  ✓
+       EPI-SN-GANT → Commandé : 100 | Reçu : 100 ✓
+       EPI-SN-VIS  → Commandé : 50  | Reçu : 50  ✓
+       EPI-SN-LUNE → Commandé : 50  | Reçu : 50  ✓
+
+     → Enregistrer la réception → BR-2026-001 créé
+     → Vérifier : BC-2026-002 passe en statut "RECEPTIONNE"
+     → VÉRIFIER LE STOCK (section critique) :
+         → Menu : Stock → filtrer dépôt "MAG-DAKAR"
+         → EPI-SN-CAS  : doit afficher 145 + 50 = 195 unités
+         → EPI-SN-GANT : doit afficher 280 + 100 = 380 unités
+         → EPI-SN-VIS  : doit afficher 92 + 50 = 142 unités
+         → EPI-SN-LUNE : doit afficher 115 + 50 = 165 unités
+         (les valeurs de départ viennent du seed initial)
+
+8.3  RÉCEPTION PARTIELLE — BC-2026-001 (câblage électrique)
+     → Réceptions → Nouvelle réception
+     Données :
+       Bon de commande   : BC-2026-001
+       Dépôt destination : Magasin Central Dakar (MAG-DAKAR)
+       Date réception    : 21/05/2026
+       Conformité        : PARTIELLE
+
+     Lignes reçues :
+       CAB-3G25     → Commandé : 12 | Reçu : 12 ✓ (livraison complète)
+       CAB-3G15     → Commandé : 18 | Reçu : 15 (3 rouleaux manquants)
+       INTER-SIMPLE → Commandé : 45 | Reçu : 45 ✓
+       PRISE-2P     → Commandé : 60 | Reçu : 60 ✓
+       DISJONCT-25A → Commandé : 20 | Reçu : 18 (2 unités endommagées)
+
+     Réserve : "Livraison partielle SENICO du 21/05/2026.
+                3 rouleaux CAB-3G15 manquants (reliquat prévu 28/05).
+                2 disjoncteurs 25A refusés — emballages brisés,
+                remplacés sous garantie fournisseur."
+
+     → Enregistrer → BR-2026-002 créé
+     → Vérifier : BC-2026-001 passe en "PARTIELLEMENT_RECEPTIONNE"
+     → VÉRIFIER LE STOCK :
+         → CAB-3G25     : 24 + 12 = 36 rouleaux dans MAG-DAKAR
+         → CAB-3G15     : 38 + 15 = 53 rouleaux dans MAG-DAKAR
+         → INTER-SIMPLE : 0 + 45 = 45 unités (article nouveau en stock)
+         → PRISE-2P     : 0 + 60 = 60 unités
+         → DISJONCT-25A : 0 + 18 = 18 unités
+
+8.4  RÉCEPTION DU RELIQUAT — CAB-3G15 ET DISJONCT-25A
+     → Réceptions → Nouvelle réception
+     Données :
+       Bon de commande   : BC-2026-001 (même commande)
+       Dépôt destination : MAG-DAKAR
+       Date réception    : 28/05/2026
+       Conformité        : CONFORME
+
+     Lignes reçues :
+       CAB-3G25     → 0 (ne pas saisir / mettre à 0)
+       CAB-3G15     → Commandé : 18 | Reçu : 3 (reliquat)
+       INTER-SIMPLE → 0
+       PRISE-2P     → 0
+       DISJONCT-25A → Reçu : 2 (remplacement garanti)
+
+     → Enregistrer → BR-2026-003 créé
+     → VÉRIFIER LE STOCK après réception complète :
+         → CAB-3G15     : 53 + 3  = 56 rouleaux
+         → DISJONCT-25A : 18 + 2  = 20 unités
+
+8.5  VÉRIFICATION MOUVEMENTS DE STOCK
+     → Menu : Mouvements de stock
+     → Filtrer sur dépôt "MAG-DAKAR"
+     → Vérifier que les 3 réceptions (BR-2026-001, BR-2026-002, BR-2026-003)
+       apparaissent bien avec type "ENTREE_ACHAT"
+     → Cliquer sur un mouvement → Vérifier l'article, la quantité, la référence
+
+8.6  RÉCEPTION BC-2026-003 (carrelage internat)
+     → Réceptions → Nouvelle réception
+     Données :
+       Bon de commande   : BC-2026-003
+       Dépôt destination : Dépôt Chantier Thiès (DEP-THIES)
+                          (les finitions sont pour le lycée de Thiès)
+       Date réception    : 21/05/2026
+       Conformité        : CONFORME
+
+     Lignes reçues (quantités complètes) :
+       CARREL-30    → 420 m²
+       CARREL-MURAL → 180 m²
+       CIMENT-COLLE →  80 sacs
+       PEINTURE-INT →  20 pots
+
+     → Enregistrer → BR-2026-004
+     → VÉRIFIER STOCK DEP-THIES :
+         → CARREL-30    : 0 + 420 = 420 m² (nouveau dans ce dépôt)
+         → CARREL-MURAL : 0 + 180 = 180 m²
+         → CIMENT-COLLE : 0 + 80  = 80 sacs
+         → PEINTURE-INT : 0 + 20  = 20 pots
+
+8.7  DÉCONNEXION
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ÉTAPE 9 — TRANSFERT INTER-DÉPÔTS (MAGASINIER)
+Rôle : MAGASINIER  |  Compte : ibrahima.sow@btp-sn.com / Ibrahim2025!
+Contexte : Envoyer les câbles depuis MAG-DAKAR vers DEP-THIES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+9.1  CONNEXION (si déconnecté)
+     → ibrahima.sow@btp-sn.com / Ibrahim2025!
+
+9.2  NOUVEAU TRANSFERT TRF-2026-001
+     → Menu : Transferts → Nouveau transfert
+     Données :
+       Dépôt source      : Magasin Central Dakar (MAG-DAKAR)
+       Dépôt destination : Dépôt Chantier Thiès (DEP-THIES)
+
+     Lignes du transfert :
+       Ligne 1 → Article : Câble électrique 3G2.5 (CAB-3G25)
+                 Quantité : 12 rouleaux
+       Ligne 2 → Article : Câble électrique 3G1.5 (CAB-3G15)
+                 Quantité : 18 rouleaux
+       Ligne 3 → Article : Interrupteur simple allumage (INTER-SIMPLE)
+                 Quantité : 45 unités
+       Ligne 4 → Article : Prise de courant 2P+T (PRISE-2P)
+                 Quantité : 60 unités
+       Ligne 5 → Article : Disjoncteur 25A modulaire (DISJONCT-25A)
+                 Quantité : 20 unités
+
+     → Valider le transfert
+     → VÉRIFIER STOCK MAG-DAKAR après transfert :
+         → CAB-3G25     : 36 - 12 = 24 rouleaux
+         → CAB-3G15     : 56 - 18 = 38 rouleaux
+         → INTER-SIMPLE : 45 - 45 = 0 unités
+         → PRISE-2P     : 60 - 60 = 0 unités
+         → DISJONCT-25A : 20 - 20 = 0 unités
+
+     → VÉRIFIER STOCK DEP-THIES après transfert :
+         → CAB-3G25     : 0 + 12 = 12 rouleaux (nouveau)
+         → CAB-3G15     : 0 + 18 = 18 rouleaux (nouveau)
+         → INTER-SIMPLE : 0 + 45 = 45 unités
+         → PRISE-2P     : 0 + 60 = 60 unités
+         → DISJONCT-25A : 0 + 20 = 20 unités
+
+9.3  VÉRIFICATION LISTE TRANSFERTS
+     → Menu : Transferts → Vérifier que TRF-2026-001 apparaît
+     → Cliquer sur le transfert → Vérifier le détail des 5 lignes
+
+9.4  MOUVEMENT DE STOCK MANUEL (sortie consommation chantier)
+     → Menu : Mouvements → Nouveau mouvement
+     Données :
+       Type mouvement : SORTIE
+       Article        : Ciment SOCOCIM CEM II 42.5 — sac 50 kg (CIM-SOCOCIM)
+       Dépôt          : DEP-THIES
+       Quantité       : 200 sacs
+       Référence      : CHANTIER-SN1-001-SEMAINE21
+     → Valider
+     → Vérifier stock DEP-THIES CIM-SOCOCIM : 850 - 200 = 650 sacs
+
+9.5  DÉCONNEXION
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ÉTAPE 10 — GESTION DES ÉQUIPEMENTS (MAGASINIER + ADMIN)
+Rôle : MAGASINIER  |  Compte : ibrahima.sow@btp-sn.com / Ibrahim2025!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+10.1  CONNEXION (si déconnecté)
+
+10.2  CRÉATION D'UN ÉQUIPEMENT
+      → Menu : Équipements → Nouvel équipement
+      Données :
+        Code inventaire : EQ-BETON-001
+        Désignation     : Bétonnière électrique 350 L — ALTRAD BM350
+        Article lié     : (sans article)
+        État            : DISPONIBLE
+      → Valider
+
+      → Créer un deuxième équipement :
+        Code inventaire : EQ-BETON-002
+        Désignation     : Bétonnière électrique 350 L — ALTRAD BM350
+        État            : DISPONIBLE
+      → Valider
+
+      → Créer un troisième équipement :
+        Code inventaire : EQ-VIBREUR-001
+        Désignation     : Vibreur à béton électrique 2 m — WACKER EH 38
+        État            : DISPONIBLE
+      → Valider
+
+10.3  AFFECTATION D'UN ÉQUIPEMENT À UN CHANTIER
+      → Équipements → Cliquer sur EQ-BETON-001
+      → Action : Affecter
+      Données :
+        Site            : Bloc Administratif & Salles de Cours (SN1-001, Lycée Thiès)
+        Date début      : 21/05/2026
+        Commentaire     : "Affecté pour la phase 'Élévation — Gros œuvre'.
+                           Retour prévu fin juillet 2026."
+      → Valider → État passe à "AFFECTE"
+
+      → Affecter EQ-VIBREUR-001 :
+        Site            : Tour A — R+8 (SN4-001, Almadies)
+        Date début      : 21/05/2026
+        Commentaire     : "Vibration dalles R+5 à R+8."
+      → Valider
+
+10.4  RETOUR D'UN ÉQUIPEMENT
+      → Équipements → EQ-BETON-002 (toujours DISPONIBLE)
+      → Cet équipement était déjà en maintenance : modifier l'état
+      → Action : Modifier l'état → EN_MAINTENANCE
+        Commentaire : "Roulement usé — révision atelier Dakar."
+      → Vérifier la liste Équipements : EQ-BETON-002 est en maintenance
+
+      → Retour EQ-VIBREUR-001 (simuler retour anticipé) :
+        → Équipements → EQ-VIBREUR-001 → Voir affectations
+        → Action : Retourner l'équipement
+          Date fin      : 25/05/2026
+          État retour   : DISPONIBLE
+          Commentaire   : "Retour anticipé — travaux R+5 reportés."
+        → Valider → EQ-VIBREUR-001 repasse en DISPONIBLE
+
+10.5  DÉCONNEXION
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ÉTAPE 11 — SUIVI PROJET (CHEF DE PROJET)
+Rôle : CHEF_PROJET  |  Compte : amadou.diallo@btp-sn.com / Amadou2025!
+Contexte : Amadou suit l'avancement du Lycée Technique de Thiès
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+11.1  CONNEXION
+      → amadou.diallo@btp-sn.com / Amadou2025!
+
+11.2  CONSULTATION DU PROJET PRJ-SN-001
+      → Menu : Projets → Construction Lycée Technique Régional de Thiès
+      → Vérifier : budget initial 2 850 000 000 FCFA
+      → Vérifier les 3 sites et leurs statuts
+      → Vérifier les 5 lots budgétaires
+
+11.3  CONSULTATION DES DEMANDES LIÉES
+      → Demandes → Filtrer sur projet PRJ-SN-001
+      → Vérifier les demandes DM-2025-001, DM-2025-002, DM-2026-001,
+        DM-2025-004, DM-2025-007, DM-2025-009
+      → Vérifier que DM-2026-001 est bien "APPROUVEE"
+
+11.4  CONSULTATION STOCK DU DÉPÔT THIÈS
+      → Menu : Stock → Filtrer par dépôt "DEP-THIES"
+      → Vérifier les articles reçus et transférés à l'étape 8 et 9
+      → Relever les articles sous seuil d'alerte (si applicable)
+
+11.5  DÉCONNEXION
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ÉTAPE 12 — REPORTING GLOBAL (ADMIN)
+Rôle : ADMIN  |  Compte : admin@btp.local / Admin123!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+12.1  CONNEXION
+      → admin@btp.local / Admin123!
+
+12.2  PAGE REPORTING
+      → Menu : Reporting
+      → Vérifier :
+          • Graphique "Mouvements par mois" — doit refléter les entrées du jour
+          • Top fournisseurs : SENICO et CFAO-BTP doivent apparaître
+          • Top articles commandés
+          • Répartition statuts demandes
+          • Budgets par lot (consommé vs prévu)
+
+12.3  PAGE STOCK — VUE GLOBALE
+      → Menu : Stock (sans filtre)
+      → Vérifier la liste complète articles × dépôts
+      → Cliquer sur un article → voir la fiche détail (StockDetail)
+      → Vérifier les mouvements associés à cet article
+
+12.4  CONSULTATION FICHE ARTICLE
+      → Menu : Articles → Cliquer sur "Câble électrique 3G2.5"
+      → Vérifier prix moyen, famille, unité, seuil minimum
+      → Modifier le prix moyen : 87 000 FCFA (prix réel du dernier achat)
+      → Enregistrer
+
+12.5  GESTION ALERTES STOCK
+      → Menu : Stock → Repérer les articles sous seuil d'alerte
+        (colonne "Alerte" ou badge rouge)
+      → Noter les articles concernés pour lancer une future commande
+
+12.6  CONSULTATION RÉCEPTIONS
+      → Menu : Réceptions
+      → Vérifier les 4 bons de réception créés :
+          BR-2026-001 (EPI — CONFORME)
+          BR-2026-002 (câblage — PARTIELLE)
+          BR-2026-003 (reliquat câblage — CONFORME)
+          BR-2026-004 (carrelage — CONFORME)
+      → Filtrer par dépôt "MAG-DAKAR" → 3 réceptions visibles
+
+12.7  AUDIT — TRAÇABILITÉ COMPLÈTE
+      → Menu : Audit
+      → Filtrer par type "receipt" ou chercher "BR-2026"
+      → Vérifier que chaque création de réception est tracée
+      → Filtrer par utilisateur "ibrahima.sow" → voir toutes ses actions
+
+12.8  GESTION DES NOTIFICATIONS
+      → Menu : Notifications
+      → Vérifier les notifications non lues
+      → Marquer tout comme lu
+      → Vérifier le compteur passe à 0
+
+12.9  DÉCONNEXION
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ÉTAPE 13 — CONDUCTEUR DE TRAVAUX (SUIVI CHANTIER)
+Rôle : CONDUCTEUR  |  Compte : fatou.ndoye@btp-sn.com / Fatou2025!
+Contexte : Fatou vérifie l'état des demandes de son chantier Ziguinchor
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+13.1  CONNEXION
+      → fatou.ndoye@btp-sn.com / Fatou2025!
+
+13.2  CRÉATION D'UNE DEMANDE URGENTE — DM-2026-002
+      → Demandes → Nouvelle demande
+      Données :
+        Projet         : Construction Centre de Santé Niveau 2 — Ziguinchor (PRJ-SN-003)
+        Site           : Bloc Urgences & Consultations (SN3-002)
+        Phase          : (sans phase spécifique)
+        Lot budgétaire : LOT-03 (Plomberie & Hydraulique)
+        Urgence        : URGENTE
+        Motif          : Rupture tube PVC Ø110 — arrêt chantier imminent.
+                         Réseaux eaux usées urgences bloqués.
+                         Livraison exigée sous 48h depuis Dakar.
+
+      Lignes :
+        Ligne 1 → Article : Tube PVC Ø110 mm (TUBE-PVC110)
+                  Quantité demandée : 80 ml
+        Ligne 2 → Article : Tube PVC Ø63 mm (TUBE-PVC63)
+                  Quantité demandée : 50 ml
+        Ligne 3 → Article : Robinet d'arrêt 1/2" (ROBINET-12)
+                  Quantité demandée : 15 unités
+
+      → Soumettre directement (pas de brouillon — urgent)
+      → Vérifier : statut "SOUMISE"
+
+13.3  SUIVI DES DEMANDES DM-2025-005 ET DM-2025-008
+      → Demandes → Filtrer sur projet PRJ-SN-003
+      → Vérifier les statuts de DM-2025-005 et DM-2025-008
+      → Consulter le détail de DM-2025-008 (plomberie urgences)
+        → Vérifier le commentaire de complément fourni par Oumar Sarr
+
+13.4  DÉCONNEXION
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ÉTAPE 14 — PARAMÈTRES ET RÉFÉRENTIELS (ADMIN)
+Rôle : ADMIN  |  Compte : admin@btp.local / Admin123!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+14.1  CONNEXION
+      → admin@btp.local / Admin123!
+
+14.2  AJOUT D'UN NOUVEAU FOURNISSEUR
+      → Menu : Paramètres → (ou gestion fournisseurs depuis Achats)
+      → Vérifier que la liste des fournisseurs affiche les 9 existants
+      → Explorer la page Paramètres : dépôts, articles, unités, familles
+
+14.3  CONSULTATION PAGE DÉPÔTS
+      → Menu : Paramètres (ou accès direct /depots si disponible)
+      → Vérifier les 5 dépôts avec leurs types et localisations
+
+14.4  VÉRIFICATION COHÉRENCE GLOBALE
+      → Vérifier que toutes les entités créées pendant le scénario
+        sont bien présentes et cohérentes :
+          ✓ Projet PRJ-SN-006 (Pikine) avec ses 2 lots
+          ✓ Article AGGLO-20 créé à l'étape 1
+          ✓ 3 bons de commande (BC-2026-001/002/003) en statut RECEPTIONNE
+          ✓ 4 bons de réception (BR-2026-001 à 004)
+          ✓ 1 transfert (TRF-2026-001 MAG-DAKAR → DEP-THIES)
+          ✓ Équipements EQ-BETON-001/002 et EQ-VIBREUR-001
+          ✓ Demandes DM-2026-001 (APPROUVEE) et DM-2026-002 (SOUMISE)
+
+14.5  DÉCONNEXION FINALE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RÉCAPITULATIF — FONCTIONNALITÉS TESTÉES PAR RÔLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ADMIN            → Création projet, site, lots, article, lecture reporting,
+                     audit, notifications, gestion stock, KPI dashboard
+
+  DEMANDEUR        → Création demande (brouillon → soumission), réponse
+  (Aïssatou/Oumar)   au complément, resoumettre, notifications
+
+  RESP_TECHNIQUE   → Validation technique, demande de complément,
+  (El Hadji)         consultation workflow
+
+  CONTROLEUR       → Validation budgétaire avec approbation partielle,
+  (Aminata)          calcul montant, commentaires justificatifs
+
+  DAF              → Validation finale direction, engagement budgétaire,
+                     consultation historique validations
+
+  ACHETEUR         → Création bons de commande multi-lignes, sélection
+  (Moussa)           fournisseur, prix unitaires négociés
+
+  MAGASINIER       → Réception conforme + partielle + reliquat,
+  (Ibrahima)         vérification stock, transfert inter-dépôts,
+                     mouvement manuel, gestion équipements + affectations
+
+  CHEF_PROJET      → Consultation projet, demandes filtrées, stock dépôt,
+  (Amadou)           vision avancement
+
+  CONDUCTEUR       → Création demande urgente, suivi workflow demandes,
+  (Fatou/Mariama)    consultation complément requis
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VÉRIFICATIONS STOCK CRITIQUES À CONTRÔLER EN FIN DE SCÉNARIO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  DÉPÔT : MAG-DAKAR (Magasin Central Dakar — Parcelles Assainies)
+  ────────────────────────────────────────────────────────────────
+  EPI-SN-CAS      : 195 u      (145 initial + 50 réception BR-2026-001)
+  EPI-SN-GANT     : 380 u      (280 + 100)
+  EPI-SN-VIS      : 142 u      (92  + 50)
+  EPI-SN-LUNE     : 165 u      (115 + 50)
+  CAB-3G25        :  24 rouleaux (24 initial + 12 réception - 12 transfert)
+  CAB-3G15        :  38 rouleaux (38 + 15 + 3 - 18)
+  INTER-SIMPLE    :   0 u      (0 + 45 - 45 transféré)
+  PRISE-2P        :   0 u      (0 + 60 - 60 transféré)
+  DISJONCT-25A    :   0 u      (0 + 18 + 2 - 20 transféré)
+  CIM-SOCOCIM     : 2400 u     (inchangé — pas de mouvement en MAG-DAKAR)
+
+  DÉPÔT : DEP-THIES (Dépôt Chantier Thiès — Zone Industrielle)
+  ─────────────────────────────────────────────────────────────
+  CIM-SOCOCIM     : 650 sacs   (850 initial - 200 sortie chantier étape 9.4)
+  CAB-3G25        :  12 rouleaux (0 initial + 12 transfert)
+  CAB-3G15        :  18 rouleaux (0 + 18 transfert)
+  INTER-SIMPLE    :  45 u      (0 + 45 transfert)
+  PRISE-2P        :  60 u      (0 + 60 transfert)
+  DISJONCT-25A    :  20 u      (0 + 20 transfert)
+  CARREL-30       : 420 m²     (0 + 420 réception BR-2026-004)
+  CARREL-MURAL    : 180 m²     (0 + 180)
+  CIMENT-COLLE    :  80 sacs   (0 + 80)
+  PEINTURE-INT    :  20 pots   (0 + 20)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NOTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• Tous les prix sont en FCFA (francs CFA ouest-africains, code XOF).
+• Les numéros auto-générés (BR-2026-XXX, BC-2026-XXX, TRF-XXXX) peuvent
+  différer si d'autres enregistrements existent déjà en base — l'important
+  est de vérifier le comportement, pas le numéro exact.
+• Les valeurs de stock "initial" sont celles injectées par seed_reel.js.
+  Si le seed n'a pas été relancé récemment, les valeurs peuvent différer ;
+  ajustez vos calculs en conséquence en lisant le stock réel avant de commencer.
+• Le workflow demande complet est :
+  BROUILLON → SOUMISE → VALIDATION_TECH → VALIDATION_BUDGETAIRE
+  → VALIDATION_DIRECTION → APPROUVEE → (bon de commande) → RECEPTIONNE
