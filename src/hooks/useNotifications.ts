@@ -17,6 +17,11 @@ export interface AppNotification {
 
 const POLL_INTERVAL_MS = 8_000;
 
+// Émis par la page Notifications après un marquage « lu » : le badge de l'en-tête
+// (autre instance de ce hook) se recharge aussitôt au lieu d'attendre le polling.
+export const NOTIFICATIONS_CHANGED = "notifications:changed";
+export const signalNotificationsChanged = () => window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
+
 export function useNotifications() {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -60,7 +65,11 @@ export function useNotifications() {
   useEffect(() => {
     fetchAndNotify();
     const timer = setInterval(fetchAndNotify, POLL_INTERVAL_MS);
-    return () => clearInterval(timer);
+    window.addEventListener(NOTIFICATIONS_CHANGED, fetchAndNotify);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener(NOTIFICATIONS_CHANGED, fetchAndNotify);
+    };
   }, [fetchAndNotify]);
 
   const markRead = useCallback(async (id: string) => {

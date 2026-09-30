@@ -36,9 +36,9 @@ export function AffectEquipementDialog({ equipementId, equipementCode, trigger, 
 
   useEffect(() => {
     if (!open) return;
-    Promise.all([sitesApi.list(), usersApi.list()])
-      .then(([s, u]) => { setSites(s); setUsers(u); })
-      .catch(() => {});
+    // Chargements indépendants : l'échec de l'un ne vide pas l'autre.
+    sitesApi.list().then(setSites).catch(() => setSites([]));
+    usersApi.directory().then(setUsers).catch(() => setUsers([]));
   }, [open]);
 
   // Charger les demandes approuvées du chantier sélectionné

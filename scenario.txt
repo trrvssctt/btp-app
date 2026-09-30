@@ -22,6 +22,12 @@ COMPTES UTILISATEURS (mots de passe en clair)
 
 URL locale : http://localhost:5173
 
+NUMÉROTATION : les numéros DM / BC / BR / TR sont attribués automatiquement
+au format XX-AAAA-NNNN (4 chiffres), à la suite des numéros déjà en base.
+Ex. : si la base contient déjà BC-2026-0016, le « BC-2026-0001 » du scénario
+sera en réalité BC-2026-0017. Notez le numéro réel affiché et utilisez-le
+dans les étapes suivantes.
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ÉTAPE 1 — ADMINISTRATION GÉNÉRALE
 Rôle : ADMIN  |  Compte : admin@btp.local / Admin123!
@@ -102,7 +108,7 @@ Contexte : Aïssatou est chargée du câblage électrique sur le Lycée de Thiè
      → Email : aissatou.mbaye@btp-sn.com | Mot de passe : Aissatou2025!
      → Vérifier : menu limité (Demandes, Notifications)
 
-2.2  CRÉATION D'UNE DEMANDE D'ACHAT (DM-2026-001)
+2.2  CRÉATION D'UNE DEMANDE D'ACHAT (DM-2026-0001)
      → Menu : Demandes → Nouvelle demande
      Données :
        Projet         : Construction Lycée Technique Régional de Thiès (PRJ-SN-001)
@@ -146,9 +152,9 @@ Contexte : El Hadji valide la pertinence technique des demandes
 3.1  CONNEXION
      → Email : elhadji.ndiaye@btp-sn.com | Mot de passe : ElHadji2025!
 
-3.2  VALIDATION DE DM-2026-001 (câblage électrique)
+3.2  VALIDATION DE DM-2026-0001 (câblage électrique)
      → Menu : Demandes → Filtrer sur statut "SOUMISE"
-     → Ouvrir DM-2026-001
+     → Ouvrir DM-2026-0001
      → Vérifier le détail des 5 lignes
      → Action : Valider techniquement
        Commentaire : "Câblage conforme au plan d'exécution révisé v3.2
@@ -186,7 +192,7 @@ Rôle : DEMANDEUR  |  Compte : oumar.sarr@btp-sn.com / Oumar2025!
 
 4.3  RESOUMETTRE DM-2025-008 AVEC COMPLÉMENT
      → Ouvrir DM-2025-008
-     → Action : Fournir le complément
+     → Panneau « Complément requis » → champ « Réponse au complément »
        Commentaire : "Précision apportée : raccords Ø110 PVC série S
                       (10 unités), tube galvanisé 1 pouce — 40 ml pour
                       alimentation ECS. Quantités inchangées par ailleurs."
@@ -203,8 +209,8 @@ Contexte : Aminata contrôle l'enveloppe budgétaire de chaque demande
 5.1  CONNEXION
      → Email : aminata.diop@btp-sn.com | Mot de passe : Aminata2025!
 
-5.2  VALIDATION BUDGÉTAIRE DE DM-2026-001
-     → Demandes → Statut "VALIDATION_BUDGETAIRE" → Ouvrir DM-2026-001
+5.2  VALIDATION BUDGÉTAIRE DE DM-2026-0001
+     → Demandes → Statut "VALIDATION_BUDGETAIRE" → Ouvrir DM-2026-0001
      → Vérifier montant estimé
        (12 × 85 000) + (18 × 62 000) + (45 × 4 500) + (60 × 5 800) + (20 × 12 500)
        = 1 020 000 + 1 116 000 + 202 500 + 348 000 + 250 000
@@ -251,8 +257,8 @@ Contexte : Validation finale — signature DAF obligatoire
 6.1  CONNEXION
      → Email : daf@btp-sn.com | Mot de passe : Daf2025!
 
-6.2  VALIDATION FINALE DE DM-2026-001
-     → Demandes → Statut "VALIDATION_DIRECTION" → Ouvrir DM-2026-001
+6.2  VALIDATION FINALE DE DM-2026-0001
+     → Demandes → Statut "VALIDATION_DIRECTION" → Ouvrir DM-2026-0001
      → Vérifier l'historique des validations (technique + budgétaire)
      → Approuver définitivement
        Commentaire : "Approuvé par DAF. Bon pour ordre d'achat.
@@ -278,8 +284,12 @@ Contexte : Moussa transforme les demandes approuvées en bons de commande
 7.1  CONNEXION
      → Email : moussa.faye@btp-sn.com | Mot de passe : Moussa2025!
 
-7.2  CRÉATION DU BON DE COMMANDE BC-2026-001 (câblage électrique)
-     → Menu : Achats → Nouveau bon de commande
+7.2  CRÉATION DU BON DE COMMANDE BC-2026-0001 (câblage électrique)
+     → Menu : Demandes → ouvrir DM-2026-0001 (statut APPROUVEE)
+       → bouton « Créer un bon de commande » (lignes pré-remplies depuis la demande)
+       → Vérifier : après création, la fiche du BC s'ouvre et affiche
+         « Demande d'origine : DM-2026-0001 » ; la demande liste ce BC
+       (alternative sans lien demande : Achats → Nouvelle commande)
      Données :
        Fournisseur : SENICO — Sanitaires & Électricité
        Statut      : ENVOYEE (commande déjà transmise au fournisseur)
@@ -306,10 +316,10 @@ Contexte : Moussa transforme les demandes approuvées en bons de commande
        = 1 044 000 + 1 143 000 + 189 000 + 330 000 + 236 000
        = 2 942 000 FCFA
 
-     → Valider → Numéro BC-2026-001 attribué
+     → Valider → Numéro BC-2026-0001 attribué
      → Vérifier le montant total affiché
 
-7.3  CRÉATION DU BON DE COMMANDE BC-2026-002 (EPI)
+7.3  CRÉATION DU BON DE COMMANDE BC-2026-0002 (EPI)
      → Achats → Nouveau bon de commande
      Données :
        Fournisseur : Dépôt BTP Dakar Distribution (BTP-DEPOT)
@@ -324,9 +334,9 @@ Contexte : Moussa transforme les demandes approuvées en bons de commande
                  Quantité : 50  | Prix unitaire : 8 500 FCFA
        Ligne 4 → Lunettes protection (EPI-SN-LUNE)
                  Quantité : 50  | Prix unitaire : 3 000 FCFA
-     → Valider → BC-2026-002
+     → Valider → BC-2026-0002
 
-7.4  CRÉATION DU BON DE COMMANDE BC-2026-003 (carrelage internat)
+7.4  CRÉATION DU BON DE COMMANDE BC-2026-0003 (carrelage internat)
      → Achats → Nouveau bon de commande
      Données :
        Fournisseur : CFAO Matériaux Sénégal (CFAO-BTP)
@@ -342,7 +352,7 @@ Contexte : Moussa transforme les demandes approuvées en bons de commande
        Ligne 4 → Peinture intérieure — bidon 20 L (PEINTURE-INT)
                  Quantité : 20 pots | Prix unitaire : 34 000 FCFA
 
-     → Valider → BC-2026-003
+     → Valider → BC-2026-0003
 
 7.5  DÉCONNEXION
 
@@ -355,10 +365,10 @@ Contexte : Les livraisons arrivent au Magasin Central Dakar
 8.1  CONNEXION
      → Email : ibrahima.sow@btp-sn.com | Mot de passe : Ibrahim2025!
 
-8.2  RÉCEPTION CONFORME — BC-2026-002 (EPI)
+8.2  RÉCEPTION CONFORME — BC-2026-0002 (EPI)
      → Menu : Réceptions → Nouvelle réception
      Données :
-       Bon de commande : BC-2026-002 (SENICO)
+       Bon de commande : BC-2026-0002 (Dépôt BTP Dakar Distribution)
          → Le système charge automatiquement les 4 lignes du BC
        Dépôt destination : Magasin Central Dakar (MAG-DAKAR)
        Date réception    : 21/05/2026
@@ -370,8 +380,8 @@ Contexte : Les livraisons arrivent au Magasin Central Dakar
        EPI-SN-VIS  → Commandé : 50  | Reçu : 50  ✓
        EPI-SN-LUNE → Commandé : 50  | Reçu : 50  ✓
 
-     → Enregistrer la réception → BR-2026-001 créé
-     → Vérifier : BC-2026-002 passe en statut "RECEPTIONNE"
+     → Enregistrer la réception → BR-2026-0001 créé
+     → Vérifier : BC-2026-0002 passe en statut "RECEPTIONNE"
      → VÉRIFIER LE STOCK (section critique) :
          → Menu : Stock → filtrer dépôt "MAG-DAKAR"
          → EPI-SN-CAS  : doit afficher 145 + 50 = 195 unités
@@ -380,10 +390,10 @@ Contexte : Les livraisons arrivent au Magasin Central Dakar
          → EPI-SN-LUNE : doit afficher 115 + 50 = 165 unités
          (les valeurs de départ viennent du seed initial)
 
-8.3  RÉCEPTION PARTIELLE — BC-2026-001 (câblage électrique)
+8.3  RÉCEPTION PARTIELLE — BC-2026-0001 (câblage électrique)
      → Réceptions → Nouvelle réception
      Données :
-       Bon de commande   : BC-2026-001
+       Bon de commande   : BC-2026-0001
        Dépôt destination : Magasin Central Dakar (MAG-DAKAR)
        Date réception    : 21/05/2026
        Conformité        : PARTIELLE
@@ -400,8 +410,10 @@ Contexte : Les livraisons arrivent au Magasin Central Dakar
                 2 disjoncteurs 25A refusés — emballages brisés,
                 remplacés sous garantie fournisseur."
 
-     → Enregistrer → BR-2026-002 créé
-     → Vérifier : BC-2026-001 passe en "PARTIELLEMENT_RECEPTIONNE"
+     → Enregistrer → BR-2026-0002 créé
+     → Vérifier : BC-2026-0001 passe en "PARTIELLEMENT_RECEPTIONNE"
+       (le statut est calculé sur les quantités reçues, pas sur la conformité)
+     → Fiche BC-2026-0001 : colonne « Reçu » → CAB-3G15 = 15/18, DISJONCT-25A = 18/20
      → VÉRIFIER LE STOCK :
          → CAB-3G25     : 24 + 12 = 36 rouleaux dans MAG-DAKAR
          → CAB-3G15     : 38 + 15 = 53 rouleaux dans MAG-DAKAR
@@ -412,19 +424,23 @@ Contexte : Les livraisons arrivent au Magasin Central Dakar
 8.4  RÉCEPTION DU RELIQUAT — CAB-3G15 ET DISJONCT-25A
      → Réceptions → Nouvelle réception
      Données :
-       Bon de commande   : BC-2026-001 (même commande)
+       Bon de commande   : BC-2026-0001 (affiché avec la mention « (reliquat) »)
        Dépôt destination : MAG-DAKAR
        Date réception    : 28/05/2026
        Conformité        : CONFORME
 
-     Lignes reçues :
-       CAB-3G25     → 0 (ne pas saisir / mettre à 0)
-       CAB-3G15     → Commandé : 18 | Reçu : 3 (reliquat)
-       INTER-SIMPLE → 0
-       PRISE-2P     → 0
-       DISJONCT-25A → Reçu : 2 (remplacement garanti)
+     Lignes reçues (pré-remplies avec le reste à livrer, colonne « Déjà reçu ») :
+       CAB-3G25     → déjà reçu 12 → champ grisé à 0
+       CAB-3G15     → déjà reçu 15 → Reçu : 3 (reliquat)
+       INTER-SIMPLE → déjà reçu 45 → champ grisé à 0
+       PRISE-2P     → déjà reçu 60 → champ grisé à 0
+       DISJONCT-25A → déjà reçu 18 → Reçu : 2 (remplacement garanti)
 
-     → Enregistrer → BR-2026-003 créé
+     → TEST DE CONTRÔLE : saisir 4 pour CAB-3G15 → refus
+       « Quantité reçue supérieure au reste à livrer » → remettre 3
+     → Enregistrer → BR-2026-0003 créé
+     → Vérifier : BC-2026-0001 passe en "RECEPTIONNE" et n'est plus proposé
+       dans la liste des BC à réceptionner
      → VÉRIFIER LE STOCK après réception complète :
          → CAB-3G15     : 53 + 3  = 56 rouleaux
          → DISJONCT-25A : 18 + 2  = 20 unités
@@ -432,14 +448,14 @@ Contexte : Les livraisons arrivent au Magasin Central Dakar
 8.5  VÉRIFICATION MOUVEMENTS DE STOCK
      → Menu : Mouvements de stock
      → Filtrer sur dépôt "MAG-DAKAR"
-     → Vérifier que les 3 réceptions (BR-2026-001, BR-2026-002, BR-2026-003)
+     → Vérifier que les 3 réceptions (BR-2026-0001, BR-2026-0002, BR-2026-0003)
        apparaissent bien avec type "ENTREE_ACHAT"
      → Cliquer sur un mouvement → Vérifier l'article, la quantité, la référence
 
-8.6  RÉCEPTION BC-2026-003 (carrelage internat)
+8.6  RÉCEPTION BC-2026-0003 (carrelage internat)
      → Réceptions → Nouvelle réception
      Données :
-       Bon de commande   : BC-2026-003
+       Bon de commande   : BC-2026-0003
        Dépôt destination : Dépôt Chantier Thiès (DEP-THIES)
                           (les finitions sont pour le lycée de Thiès)
        Date réception    : 21/05/2026
@@ -451,7 +467,7 @@ Contexte : Les livraisons arrivent au Magasin Central Dakar
        CIMENT-COLLE →  80 sacs
        PEINTURE-INT →  20 pots
 
-     → Enregistrer → BR-2026-004
+     → Enregistrer → BR-2026-0004
      → VÉRIFIER STOCK DEP-THIES :
          → CARREL-30    : 0 + 420 = 420 m² (nouveau dans ce dépôt)
          → CARREL-MURAL : 0 + 180 = 180 m²
@@ -469,8 +485,10 @@ Contexte : Envoyer les câbles depuis MAG-DAKAR vers DEP-THIES
 9.1  CONNEXION (si déconnecté)
      → ibrahima.sow@btp-sn.com / Ibrahim2025!
 
-9.2  NOUVEAU TRANSFERT TRF-2026-001
+9.2  NOUVEAU TRANSFERT TR-2026-0001 (EXPÉDITION)
      → Menu : Transferts → Nouveau transfert
+       (seuls les articles en stock dans le dépôt émetteur sont proposés,
+        avec leur quantité disponible)
      Données :
        Dépôt source      : Magasin Central Dakar (MAG-DAKAR)
        Dépôt destination : Dépôt Chantier Thiès (DEP-THIES)
@@ -487,35 +505,48 @@ Contexte : Envoyer les câbles depuis MAG-DAKAR vers DEP-THIES
        Ligne 5 → Article : Disjoncteur 25A modulaire (DISJONCT-25A)
                  Quantité : 20 unités
 
-     → Valider le transfert
-     → VÉRIFIER STOCK MAG-DAKAR après transfert :
+     → TEST DE CONTRÔLE : saisir 999 pour CAB-3G25 → refus « Stock insuffisant »
+       → remettre 12
+     → « Expédier le transfert » → TR-2026-0001 créé, statut EXPÉDIÉ,
+       la fiche du transfert s'ouvre
+     → VÉRIFIER STOCK MAG-DAKAR après expédition :
          → CAB-3G25     : 36 - 12 = 24 rouleaux
          → CAB-3G15     : 56 - 18 = 38 rouleaux
          → INTER-SIMPLE : 45 - 45 = 0 unités
          → PRISE-2P     : 60 - 60 = 0 unités
          → DISJONCT-25A : 20 - 20 = 0 unités
 
-     → VÉRIFIER STOCK DEP-THIES après transfert :
+     → VÉRIFIER STOCK DEP-THIES après expédition : RIEN n'est encore disponible
+       (quantités en transit) — c'est l'accusé de réception qui les rend disponibles
+
+9.3  ACCUSÉ DE RÉCEPTION À DEP-THIES
+     → Fiche TR-2026-0001 → vérifier les 5 lignes, « Expédié le … par Ibrahima Sow »
+     → « Confirmer la réception » → Confirmer → statut REÇU
+     → VÉRIFIER STOCK DEP-THIES après réception :
          → CAB-3G25     : 0 + 12 = 12 rouleaux (nouveau)
          → CAB-3G15     : 0 + 18 = 18 rouleaux (nouveau)
          → INTER-SIMPLE : 0 + 45 = 45 unités
          → PRISE-2P     : 0 + 60 = 60 unités
          → DISJONCT-25A : 0 + 20 = 20 unités
 
-9.3  VÉRIFICATION LISTE TRANSFERTS
-     → Menu : Transferts → Vérifier que TRF-2026-001 apparaît
-     → Cliquer sur le transfert → Vérifier le détail des 5 lignes
+     → Le bouton « Confirmer la réception » disparaît (double réception impossible)
+
+9.3b VÉRIFICATION LISTE TRANSFERTS ET MOUVEMENTS
+     → Menu : Transferts → TR-2026-0001 apparaît (5 lignes, statut REÇU)
+     → Menu : Mouvements → 5 TRANSFERT_SORTANT (MAG-DAKAR)
+       et 5 TRANSFERT_ENTRANT (DEP-THIES), référence TR-2026-0001
 
 9.4  MOUVEMENT DE STOCK MANUEL (sortie consommation chantier)
      → Menu : Mouvements → Nouveau mouvement
      Données :
-       Type mouvement : SORTIE
+       Type mouvement : Sortie chantier (SORTIE_CHANTIER)
        Article        : Ciment SOCOCIM CEM II 42.5 — sac 50 kg (CIM-SOCOCIM)
        Dépôt          : DEP-THIES
        Quantité       : 200 sacs
        Référence      : CHANTIER-SN1-001-SEMAINE21
      → Valider
      → Vérifier stock DEP-THIES CIM-SOCOCIM : 850 - 200 = 650 sacs
+     → TEST DE CONTRÔLE : nouvelle sortie de 99 999 sacs → refus « Stock insuffisant »
 
 9.5  DÉCONNEXION
 
@@ -527,29 +558,42 @@ Rôle : MAGASINIER  |  Compte : ibrahima.sow@btp-sn.com / Ibrahim2025!
 10.1  CONNEXION (si déconnecté)
 
 10.2  CRÉATION D'UN ÉQUIPEMENT
+      Le code inventaire n'est plus saisi : il est attribué automatiquement
+      au format EQ-<FAMILLE>-NNN, à la suite du dernier numéro de la famille.
+      Les codes ci-dessous supposent que la base contient déjà EQ-BETON-001/002
+      et EQ-VIBRO-001/002 (seed) — notez le code réellement attribué.
+
       → Menu : Équipements → Nouvel équipement
       Données :
-        Code inventaire : EQ-BETON-001
+        Famille         : BETON
         Désignation     : Bétonnière électrique 350 L — ALTRAD BM350
-        Article lié     : (sans article)
         État            : DISPONIBLE
-      → Valider
+      → Vérifier l'aperçu « Code attribué : EQ-BETON-003 »
+      → Valider → EQ-BETON-003 créé
 
       → Créer un deuxième équipement :
-        Code inventaire : EQ-BETON-002
+        Famille         : BETON
         Désignation     : Bétonnière électrique 350 L — ALTRAD BM350
         État            : DISPONIBLE
-      → Valider
+      → Valider → EQ-BETON-004 (le numéro suit : 003 → 004)
 
       → Créer un troisième équipement :
-        Code inventaire : EQ-VIBREUR-001
+        Famille         : VIBRO
         Désignation     : Vibreur à béton électrique 2 m — WACKER EH 38
         État            : DISPONIBLE
-      → Valider
+      → Valider → EQ-VIBRO-003
+
+      → TEST NOUVELLE FAMILLE : Famille « + Nouvelle famille… » → DAMEUSE,
+        Désignation « Dameuse vibrante — test » → aperçu EQ-DAMEUSE-001
+        (ne pas valider, ou valider puis passer l'équipement HORS_SERVICE)
+
+      Dans la suite de l'étape 10 :
+        EQ-BETON-001  (scénario) = EQ-BETON-003 (réel)
+        EQ-BETON-002  (scénario) = EQ-BETON-004 (réel)
+        EQ-VIBREUR-001 (scénario) = EQ-VIBRO-003 (réel)
 
 10.3  AFFECTATION D'UN ÉQUIPEMENT À UN CHANTIER
-      → Équipements → Cliquer sur EQ-BETON-001
-      → Action : Affecter
+      → Équipements → carte EQ-BETON-001 → bouton « Affecter »
       Données :
         Site            : Bloc Administratif & Salles de Cours (SN1-001, Lycée Thiès)
         Date début      : 21/05/2026
@@ -566,17 +610,24 @@ Rôle : MAGASINIER  |  Compte : ibrahima.sow@btp-sn.com / Ibrahim2025!
 10.4  RETOUR D'UN ÉQUIPEMENT
       → Équipements → EQ-BETON-002 (toujours DISPONIBLE)
       → Cet équipement était déjà en maintenance : modifier l'état
-      → Action : Modifier l'état → EN_MAINTENANCE
+      → Carte EQ-BETON-002 → bouton « État » → En maintenance
         Commentaire : "Roulement usé — révision atelier Dakar."
+        (commentaire obligatoire pour tout état autre que Disponible)
       → Vérifier la liste Équipements : EQ-BETON-002 est en maintenance
+      → « Historique » → « Disponible → En maintenance » avec le commentaire,
+        la date et « par Ibrahima Sow »
+      → Vérifier : EQ-BETON-001 (affecté) n'a PAS de bouton « État » —
+        un équipement affecté ne change d'état que par son retour
 
       → Retour EQ-VIBREUR-001 (simuler retour anticipé) :
-        → Équipements → EQ-VIBREUR-001 → Voir affectations
-        → Action : Retourner l'équipement
+        → Carte EQ-VIBREUR-001 → bouton « ↩ Retour »
+        → TEST DE CONTRÔLE : date fin 20/05/2026 → refus (antérieure au début)
           Date fin      : 25/05/2026
           État retour   : DISPONIBLE
           Commentaire   : "Retour anticipé — travaux R+5 reportés."
         → Valider → EQ-VIBREUR-001 repasse en DISPONIBLE
+        → « Historique » : affectation du 21/05 au 25/05/2026, avec les deux
+          commentaires (affectation + « Retour : … »)
 
 10.5  DÉCONNEXION
 
@@ -596,10 +647,16 @@ Contexte : Amadou suit l'avancement du Lycée Technique de Thiès
       → Vérifier les 5 lots budgétaires
 
 11.3  CONSULTATION DES DEMANDES LIÉES
-      → Demandes → Filtrer sur projet PRJ-SN-001
-      → Vérifier les demandes DM-2025-001, DM-2025-002, DM-2026-001,
-        DM-2025-004, DM-2025-007, DM-2025-009
-      → Vérifier que DM-2026-001 est bien "APPROUVEE"
+      → Demandes → filtre « Projet » = PRJ-SN-001
+        (ou fiche projet → onglet Demandes → « Ouvrir dans la liste des demandes »)
+      → L'URL contient ?projet=… : la vue filtrée se partage par lien
+      → Vérifier les demandes DM-2025-001, DM-2025-002, DM-2026-0001,
+        DM-2025-004, DM-2025-007 (DM-2025-009 appartient à un autre projet
+        dans le seed actuel)
+      → Vérifier que les demandes SOUMISE (DM-2025-004, DM-2025-007) sont
+        bien visibles : le chef de projet voit tous les stades de ses projets
+      → Filtre « Statut » = Approuvée → DM-2026-0001 apparaît
+      → Filtre « Urgence » combinable ; « Effacer » remet tout à zéro
 
 11.4  CONSULTATION STOCK DU DÉPÔT THIÈS
       → Menu : Stock → Filtrer par dépôt "DEP-THIES"
@@ -619,10 +676,13 @@ Rôle : ADMIN  |  Compte : admin@btp.local / Admin123!
 12.2  PAGE REPORTING
       → Menu : Reporting
       → Vérifier :
-          • Graphique "Mouvements par mois" — doit refléter les entrées du jour
-          • Top fournisseurs : SENICO et CFAO-BTP doivent apparaître
-          • Top articles commandés
-          • Répartition statuts demandes
+          • Graphique "Mouvements de stock" — 6 derniers mois en français
+            (mois sans mouvement à 0), le mois en cours reflète les entrées du jour
+          • Top fournisseurs (8 premiers, BC émis hors brouillons) :
+            CFAO Matériaux Sénégal et SENICO doivent apparaître
+          • Top articles commandés : CAB-3G15, CAB-3G25, CARREL-30… (survol =
+            désignation, montant et quantité)
+          • Répartition statuts demandes (libellés : Soumise, Approuvée…)
           • Budgets par lot (consommé vs prévu)
 
 12.3  PAGE STOCK — VUE GLOBALE
@@ -645,23 +705,28 @@ Rôle : ADMIN  |  Compte : admin@btp.local / Admin123!
 12.6  CONSULTATION RÉCEPTIONS
       → Menu : Réceptions
       → Vérifier les 4 bons de réception créés :
-          BR-2026-001 (EPI — CONFORME)
-          BR-2026-002 (câblage — PARTIELLE)
-          BR-2026-003 (reliquat câblage — CONFORME)
-          BR-2026-004 (carrelage — CONFORME)
+          BR-2026-0001 (EPI — CONFORME)
+          BR-2026-0002 (câblage — PARTIELLE)
+          BR-2026-0003 (reliquat câblage — CONFORME)
+          BR-2026-0004 (carrelage — CONFORME)
       → Filtrer par dépôt "MAG-DAKAR" → 3 réceptions visibles
+      → Filtre « Conformité » = Partielle → BR-2026-0002 seul
+      → Cliquer BR-2026-0003 → suivi des livraisons du BC câblage (2 dates)
 
 12.7  AUDIT — TRAÇABILITÉ COMPLÈTE
       → Menu : Audit
-      → Filtrer par type "receipt" ou chercher "BR-2026"
-      → Vérifier que chaque création de réception est tracée
-      → Filtrer par utilisateur "ibrahima.sow" → voir toutes ses actions
+      → Filtrer par entité « Reception » ou chercher "BR-2026"
+      → Vérifier que chaque création de réception est tracée (une ligne par
+        réception, sans doublon)
+      → Filtrer par utilisateur « Ibrahima Sow » → voir toutes ses actions
+        (réceptions, transferts, mouvements, équipements)
 
 12.8  GESTION DES NOTIFICATIONS
       → Menu : Notifications
       → Vérifier les notifications non lues
       → Marquer tout comme lu
-      → Vérifier le compteur passe à 0
+      → Vérifier que le compteur de la page ET le badge de la cloche
+        (en-tête) passent à 0 immédiatement
 
 12.9  DÉCONNEXION
 
@@ -674,7 +739,7 @@ Contexte : Fatou vérifie l'état des demandes de son chantier Ziguinchor
 13.1  CONNEXION
       → fatou.ndoye@btp-sn.com / Fatou2025!
 
-13.2  CRÉATION D'UNE DEMANDE URGENTE — DM-2026-002
+13.2  CRÉATION D'UNE DEMANDE URGENTE — DM-2026-0002
       → Demandes → Nouvelle demande
       Données :
         Projet         : Construction Centre de Santé Niveau 2 — Ziguinchor (PRJ-SN-003)
@@ -695,13 +760,19 @@ Contexte : Fatou vérifie l'état des demandes de son chantier Ziguinchor
                   Quantité demandée : 15 unités
 
       → Soumettre directement (pas de brouillon — urgent)
-      → Vérifier : statut "SOUMISE"
+      → Vérifier : statut "SOUMISE" (numéro réel : suite de la séquence DM en base)
+      → TEST DE DROITS : ouvrir une demande d'un autre demandeur (ex. DM-2025-008,
+        Oumar Sarr) → aucun bouton « Modifier » / « Resoumettre » pour Fatou
 
 13.3  SUIVI DES DEMANDES DM-2025-005 ET DM-2025-008
       → Demandes → Filtrer sur projet PRJ-SN-003
       → Vérifier les statuts de DM-2025-005 et DM-2025-008
       → Consulter le détail de DM-2025-008 (plomberie urgences)
-        → Vérifier le commentaire de complément fourni par Oumar Sarr
+        → Section « Échanges et décisions » : le retour du valideur technique,
+          puis la « Réponse du demandeur » saisie par Oumar Sarr à l'étape 4.3
+          (si l'étape 4 a été jouée avec la version actuelle)
+        → Circuit de validation : l'étape technique affiche la DERNIÈRE décision
+          (validée), pas le premier retour
 
 13.4  DÉCONNEXION
 
@@ -714,24 +785,46 @@ Rôle : ADMIN  |  Compte : admin@btp.local / Admin123!
       → admin@btp.local / Admin123!
 
 14.2  AJOUT D'UN NOUVEAU FOURNISSEUR
-      → Menu : Paramètres → (ou gestion fournisseurs depuis Achats)
-      → Vérifier que la liste des fournisseurs affiche les 9 existants
-      → Explorer la page Paramètres : dépôts, articles, unités, familles
+      → Menu : Paramètres → carte « Fournisseurs »
+      → Noter le nombre de fournisseurs affichés (9 dans le seed de référence ;
+        davantage si des fournisseurs de test ont été ajoutés)
+      → Nouveau fournisseur :
+          Code           : SEN-QUINC
+          Raison sociale : SEN-QUINCAILLERIE SARL
+          Contact        : Mamadou Fall
+          Téléphone      : +221 33 836 00 00
+          Email          : contact@senquincaillerie.sn
+      → TEST DE CONTRÔLE : recréer le code SEN-QUINC → refus
+        « La valeur « SEN-QUINC » existe déjà (code) »
+      → Valider → le compteur augmente de 1
+      → Menu : Achats → Nouvelle commande → SEN-QUINCAILLERIE apparaît
+        dans la liste des fournisseurs (fermer sans enregistrer)
+      → Explorer la page Paramètres : entreprise, utilisateurs, dépôts,
+        fournisseurs, familles, circuit de validation, notifications
 
 14.3  CONSULTATION PAGE DÉPÔTS
-      → Menu : Paramètres (ou accès direct /depots si disponible)
-      → Vérifier les 5 dépôts avec leurs types et localisations
+      → Paramètres → carte « Dépôts et entrepôts »
+      → Vérifier les 5 dépôts du seed avec leurs types et localisations :
+          MAG-DAKAR (Magasin central), DEP-THIES, DEP-KAOLACK, DEP-ZIGUI
+          (dépôts secondaires), DEP-ALMAD (dépôt chantier)
+        (d'autres dépôts peuvent exister s'ils ont été créés pour des tests)
+      → TEST DE DROITS : se connecter en magasinier (ibrahima.sow) →
+        Paramètres visible dans le menu, avec la seule carte « Familles
+        d'articles » ; l'acheteur (moussa.faye) voit « Fournisseurs »
 
 14.4  VÉRIFICATION COHÉRENCE GLOBALE
-      → Vérifier que toutes les entités créées pendant le scénario
-        sont bien présentes et cohérentes :
-          ✓ Projet PRJ-SN-006 (Pikine) avec ses 2 lots
+      → Vérifier, avec les numéros RÉELS notés pendant le scénario, que
+        toutes les entités créées sont présentes et cohérentes :
+          ✓ Projet PRJ-SN-006 (Pikine) avec ses 2 lots (étape 1)
           ✓ Article AGGLO-20 créé à l'étape 1
-          ✓ 3 bons de commande (BC-2026-001/002/003) en statut RECEPTIONNE
-          ✓ 4 bons de réception (BR-2026-001 à 004)
-          ✓ 1 transfert (TRF-2026-001 MAG-DAKAR → DEP-THIES)
-          ✓ Équipements EQ-BETON-001/002 et EQ-VIBREUR-001
-          ✓ Demandes DM-2026-001 (APPROUVEE) et DM-2026-002 (SOUMISE)
+          ✓ Les 3 bons de commande de l'étape 7 en statut RECEPTIONNE,
+            chacun lié à sa demande d'origine (fiche BC → « Demande d'origine »)
+          ✓ Les 4 bons de réception de l'étape 8 (fiche BR → suivi des livraisons)
+          ✓ Le transfert de l'étape 9 MAG-DAKAR → DEP-THIES en statut REÇU
+          ✓ Les 3 équipements de l'étape 10 (EQ-BETON-00x, EQ-VIBRO-00x)
+          ✓ Demandes de l'étape 2 (APPROUVEE) et de l'étape 13 (SOUMISE)
+      → Journal des mouvements : filtre « Référence » sur chaque BR / TR
+        → chaque document a bien ses mouvements de stock
 
 14.5  DÉCONNEXION FINALE
 
@@ -773,7 +866,7 @@ VÉRIFICATIONS STOCK CRITIQUES À CONTRÔLER EN FIN DE SCÉNARIO
 
   DÉPÔT : MAG-DAKAR (Magasin Central Dakar — Parcelles Assainies)
   ────────────────────────────────────────────────────────────────
-  EPI-SN-CAS      : 195 u      (145 initial + 50 réception BR-2026-001)
+  EPI-SN-CAS      : 195 u      (145 initial + 50 réception BR-2026-0001)
   EPI-SN-GANT     : 380 u      (280 + 100)
   EPI-SN-VIS      : 142 u      (92  + 50)
   EPI-SN-LUNE     : 165 u      (115 + 50)
@@ -792,7 +885,7 @@ VÉRIFICATIONS STOCK CRITIQUES À CONTRÔLER EN FIN DE SCÉNARIO
   INTER-SIMPLE    :  45 u      (0 + 45 transfert)
   PRISE-2P        :  60 u      (0 + 60 transfert)
   DISJONCT-25A    :  20 u      (0 + 20 transfert)
-  CARREL-30       : 420 m²     (0 + 420 réception BR-2026-004)
+  CARREL-30       : 420 m²     (0 + 420 réception BR-2026-0004)
   CARREL-MURAL    : 180 m²     (0 + 180)
   CIMENT-COLLE    :  80 sacs   (0 + 80)
   PEINTURE-INT    :  20 pots   (0 + 20)
@@ -802,9 +895,9 @@ NOTES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 • Tous les prix sont en FCFA (francs CFA ouest-africains, code XOF).
-• Les numéros auto-générés (BR-2026-XXX, BC-2026-XXX, TRF-XXXX) peuvent
-  différer si d'autres enregistrements existent déjà en base — l'important
-  est de vérifier le comportement, pas le numéro exact.
+• Les numéros auto-générés (DM/BC/BR/TR-AAAA-NNNN) continuent la séquence
+  déjà en base : ils diffèrent donc du scénario — l'important est de vérifier
+  le comportement, pas le numéro exact (voir NUMÉROTATION en tête).
 • Les valeurs de stock "initial" sont celles injectées par seed_reel.js.
   Si le seed n'a pas été relancé récemment, les valeurs peuvent différer ;
   ajustez vos calculs en conséquence en lisant le stock réel avant de commencer.

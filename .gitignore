@@ -1,0 +1,33 @@
+# Dépendances
+node_modules/
+
+# Builds (le VPS reconstruit le frontend à chaque déploiement)
+dist/
+dist.new/
+dist.prev/
+*.tsbuildinfo
+
+# Secrets — jamais versionnés (créés à la main sur chaque machine)
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+backend/src/.env
+!backend/.env.example
+# Notes de déploiement contenant des identifiants en clair
+deploiement_vps.txt
+
+# Déploiement
+.deploy.lock
+
+# Fichiers générés / archives
+assets/Bon_Commande_*.pdf
+*.zip
+
+# Éditeurs & système
+.vscode/
+.idea/
+.DS_Store
+*.log
+npm-debug.log*

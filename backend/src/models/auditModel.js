@@ -1,6 +1,6 @@
 const { query } = require('../db/pool');
 
-async function list({ action, entity_type, search, limit = 200 } = {}) {
+async function list({ action, entity_type, search, limit = 1000 } = {}) {
   const params = [];
   const conds = [];
 
@@ -30,11 +30,13 @@ async function list({ action, entity_type, search, limit = 200 } = {}) {
        al.ip,
        al.created_at,
        u.nom        AS utilisateur,
-       r.code       AS role
+       u.email      AS utilisateur_email,
+       -- Rôles agrégés : une ligne d'audit par événement, même si l'auteur a plusieurs rôles.
+       (SELECT string_agg(r.code, ', ' ORDER BY r.code)
+          FROM user_roles ur JOIN roles r ON r.id = ur.role_id
+         WHERE ur.user_id = al.actor_id) AS role
      FROM audit_logs al
      LEFT JOIN users u ON u.id = al.actor_id
-     LEFT JOIN user_roles ur ON ur.user_id = al.actor_id
-     LEFT JOIN roles r ON r.id = ur.role_id
      ${where}
      ORDER BY al.created_at DESC
      LIMIT $${params.length}`,

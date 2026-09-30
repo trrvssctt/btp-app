@@ -12,17 +12,25 @@ app.use(cors({
   origin: (origin, cb) => {
     // Autoriser les requêtes sans origine (comme curl ou outils serveurs)
     if (!origin) return cb(null, true);
-    
+
     const allowed = env.corsOrigins.includes('*') || env.corsOrigins.includes(origin);
     if (allowed) return cb(null, true);
 
+    // En développement, autoriser tous les localhost
+    if (env.nodeEnv === 'development' && origin.includes('localhost')) {
+      console.log(`[CORS] Autorisation dev pour: ${origin}`);
+      return cb(null, true);
+    }
+
+    console.error(`[CORS] Origine bloquée: ${origin}`);
+    console.error(`[CORS] Origines autorisées: ${env.corsOrigins.join(', ')}`);
     const error = new Error(`CORS blocked: ${origin}`);
-    error.status = 403; // Éviter l'erreur 500 pour un simple blocage CORS
+    error.status = 403;
     return cb(error);
   },
   credentials: true,
 }));
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '10mb' })); // 10mb pour autoriser l'upload d'images base64
 app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
 
 // Health
@@ -52,6 +60,10 @@ app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/audit', require('./routes/auditRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/domotique', require('./routes/domotiqueRoutes'));
+app.use('/api/company-settings', require('./routes/companySettingsRoutes'));
+app.use('/api/upload', require('./routes/uploadRoutes'));
+app.use('/api/validation-rules', require('./routes/validationRuleRoutes'));
+app.use('/api/notification-settings', require('./routes/notificationSettingsRoutes'));
 
 app.use(notFound);
 app.use(errorHandler);

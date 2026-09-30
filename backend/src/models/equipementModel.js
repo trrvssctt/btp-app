@@ -1,4 +1,5 @@
 const { query, withTransaction } = require('../db/pool');
+const HttpError = require('../utils/HttpError');
 
 // ─── Lecture liste ────────────────────────────────────────────────────────────
 async function list({ search } = {}) {
@@ -48,28 +49,104 @@ async function findById(id) {
   return rows[0] || null;
 }
 
-// ─── Création ─────────────────────────────────────────────────────────────────
-async function create({ code_inventaire, designation, etat, article_id }) {
+// ─── Codes inventaire : EQ-<FAMILLE>-NNN, numérotés par famille ──────────────
+const CODE_RE = '^EQ-([A-Z0-9]+)-([0-9]+)$';
+
+const formatCode = (famille, n) => `EQ-${famille}-${String(n).padStart(3, '0')}`;
+
+// Familles existantes avec le prochain code de chacune.
+async function listFamilles() {
   const { rows } = await query(
-    `INSERT INTO equipments(code_inventaire, designation, etat, article_id)
-     VALUES ($1, $2, $3, $4) RETURNING *`,
-    [code_inventaire, designation ?? null, etat ?? 'DISPONIBLE', article_id ?? null],
+    `SELECT (regexp_match(code_inventaire, '${CODE_RE}'))[1] AS famille,
+            COUNT(*)::int AS nb,
+            MAX((regexp_match(code_inventaire, '${CODE_RE}'))[2]::int) AS dernier,
+            (ARRAY_AGG(COALESCE(designation, code_inventaire) ORDER BY code_inventaire))[1] AS exemple
+       FROM equipments
+      WHERE code_inventaire ~ '${CODE_RE}'
+      GROUP BY 1
+      ORDER BY 1`,
   );
-  return rows[0];
+  return rows.map((r) => ({ ...r, prochain_code: formatCode(r.famille, r.dernier + 1) }));
+}
+
+async function nextCode(c, famille) {
+  const { rows } = await c.query(
+    `SELECT COALESCE(MAX((regexp_match(code_inventaire, '${CODE_RE}'))[2]::int), 0) + 1 AS n
+       FROM equipments
+      WHERE (regexp_match(code_inventaire, '${CODE_RE}'))[1] = $1`,
+    [famille],
+  );
+  return formatCode(famille, rows[0].n);
+}
+
+// ─── Création ─────────────────────────────────────────────────────────────────
+// Le code est toujours généré par le serveur à partir de la famille. Le verrou
+// consultatif (par famille) empêche deux créations simultanées d'obtenir le même numéro.
+async function create({ famille, designation, etat, article_id }) {
+  return withTransaction(async (c) => {
+    await c.query(`SELECT pg_advisory_xact_lock(hashtext('equipments:' || $1))`, [famille]);
+    const code = await nextCode(c, famille);
+    const { rows } = await c.query(
+      `INSERT INTO equipments(code_inventaire, designation, etat, article_id)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [code, designation ?? null, etat ?? 'DISPONIBLE', article_id ?? null],
+    );
+    return rows[0];
+  });
 }
 
 // ─── Mise à jour simple (état / désignation) ──────────────────────────────────
-async function update(id, { etat, designation }) {
-  const sets = ['updated_at = now()'];
-  const params = [id];
-  const add = (col, val) => { params.push(val ?? null); sets.push(`${col} = $${params.length}`); };
-  if (etat !== undefined)        add('etat', etat);
-  if (designation !== undefined) add('designation', designation);
+// Un changement d'état est tracé dans audit_logs (action CHANGEMENT_ETAT) dans la
+// même transaction : c'est la source de l'historique des états de l'équipement.
+async function update(id, { etat, designation, commentaire, actor_id }) {
+  return withTransaction(async (c) => {
+    const before = (await c.query(`SELECT * FROM equipments WHERE id = $1 FOR UPDATE`, [id])).rows[0];
+    if (!before) return null;
+
+    if (etat !== undefined && etat !== before.etat) {
+      // AFFECTE n'est posé/levé que par l'affectation et le retour (qui gèrent la période d'affectation).
+      if (etat === 'AFFECTE') throw new HttpError(400, "Utilisez l'action « Affecter » pour affecter un équipement");
+      if (before.etat === 'AFFECTE') {
+        throw new HttpError(400, `${before.code_inventaire} est affecté à un chantier : enregistrez d'abord son retour`);
+      }
+    }
+
+    const sets = ['updated_at = now()'];
+    const params = [id];
+    const add = (col, val) => { params.push(val ?? null); sets.push(`${col} = $${params.length}`); };
+    if (etat !== undefined)        add('etat', etat);
+    if (designation !== undefined) add('designation', designation);
+    const { rows } = await c.query(
+      `UPDATE equipments SET ${sets.join(', ')} WHERE id = $1 RETURNING *`,
+      params,
+    );
+
+    if (etat !== undefined && etat !== before.etat) {
+      await c.query(
+        `INSERT INTO audit_logs(actor_id, action, entity_type, entity_id, reference, detail, payload_before, payload_after)
+         VALUES ($1, 'CHANGEMENT_ETAT', 'equipements', $2, $3, $4, $5, $6)`,
+        [actor_id ?? null, id, before.code_inventaire, commentaire ?? null,
+         JSON.stringify({ etat: before.etat }), JSON.stringify({ etat })],
+      );
+    }
+    return rows[0];
+  });
+}
+
+// ─── Historique des changements d'état ───────────────────────────────────────
+async function listStateChanges(equipmentId) {
   const { rows } = await query(
-    `UPDATE equipments SET ${sets.join(', ')} WHERE id = $1 RETURNING *`,
-    params,
+    `SELECT al.id, al.created_at, al.detail AS commentaire,
+            al.payload_before->>'etat' AS etat_avant,
+            al.payload_after->>'etat'  AS etat_apres,
+            u.nom AS user_nom
+       FROM audit_logs al
+       LEFT JOIN users u ON u.id = al.actor_id
+      WHERE al.entity_type = 'equipements' AND al.entity_id = $1 AND al.action = 'CHANGEMENT_ETAT'
+      ORDER BY al.created_at DESC`,
+    [equipmentId],
   );
-  return rows[0] || null;
+  return rows;
 }
 
 // ─── Historique des affectations ─────────────────────────────────────────────
@@ -106,12 +183,9 @@ async function createAssignment({ equipment_id, site_id, user_id, date_debut, co
   return withTransaction(async (c) => {
     // Vérifier que l'équipement est DISPONIBLE
     const eq = (await c.query(`SELECT etat FROM equipments WHERE id = $1 FOR UPDATE`, [equipment_id])).rows[0];
-    if (!eq) throw Object.assign(new Error('Équipement introuvable'), { status: 404 });
+    if (!eq) throw new HttpError(404, 'Équipement introuvable');
     if (eq.etat !== 'DISPONIBLE') {
-      throw Object.assign(
-        new Error(`L'équipement doit être DISPONIBLE pour être affecté (état actuel : ${eq.etat})`),
-        { status: 422 },
-      );
+      throw new HttpError(422, `L'équipement doit être DISPONIBLE pour être affecté (état actuel : ${eq.etat})`);
     }
 
     // Clôturer toute affectation ouverte résiduelle (sécurité)
@@ -138,18 +212,26 @@ async function createAssignment({ equipment_id, site_id, user_id, date_debut, co
 async function closeAssignment(assignmentId, { date_fin, etat_retour, commentaire }) {
   return withTransaction(async (c) => {
     const aff = (await c.query(
-      `SELECT ea.*, e.etat AS eq_etat FROM equipment_assignments ea
+      `SELECT ea.*, to_char(ea.date_debut, 'YYYY-MM-DD') AS debut_iso, e.etat AS eq_etat FROM equipment_assignments ea
        JOIN equipments e ON e.id = ea.equipment_id
        WHERE ea.id = $1 AND ea.date_fin IS NULL FOR UPDATE`,
       [assignmentId],
     )).rows[0];
 
-    if (!aff) throw Object.assign(new Error('Affectation active introuvable'), { status: 404 });
+    if (!aff) throw new HttpError(404, 'Affectation active introuvable');
 
-    // Clôturer l'affectation
+    const fin = date_fin ?? new Date().toISOString().slice(0, 10);
+    const debut = aff.debut_iso;
+    if (fin < debut) throw new HttpError(400, `La date de retour (${fin}) est antérieure au début de l'affectation (${debut})`);
+
+    // Clôturer l'affectation — le commentaire de retour complète celui de l'affectation
     await c.query(
-      `UPDATE equipment_assignments SET date_fin = $2, commentaire = COALESCE($3, commentaire) WHERE id = $1`,
-      [assignmentId, date_fin ?? new Date().toISOString().slice(0, 10), commentaire ?? null],
+      `UPDATE equipment_assignments
+          SET date_fin = $2,
+              commentaire = CASE WHEN $3::text IS NULL THEN commentaire
+                                 ELSE CONCAT_WS(E'\n', commentaire, 'Retour : ' || $3::text) END
+        WHERE id = $1`,
+      [assignmentId, fin, commentaire ?? null],
     );
 
     // Mettre à jour l'état de l'équipement
@@ -160,4 +242,4 @@ async function closeAssignment(assignmentId, { date_fin, etat_retour, commentair
   });
 }
 
-module.exports = { list, findById, create, update, listAssignments, createAssignment, closeAssignment };
+module.exports = { list, findById, listFamilles, create, update, listStateChanges, listAssignments, createAssignment, closeAssignment };

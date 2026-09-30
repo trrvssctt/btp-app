@@ -15,8 +15,11 @@ interface ReceptionLine {
   designation_libre?: string | null;
   designation: string;
   quantite_commandee: number;
+  deja_recu: number;
   quantite_recue: number;
 }
+
+const reste = (l: ReceptionLine) => Math.max(0, l.quantite_commandee - l.deja_recu);
 
 export function NewReceptionDialog({ trigger, onSuccess }: { trigger?: React.ReactNode; onSuccess?: () => void }) {
   const [open, setOpen] = useState(false);
@@ -33,11 +36,13 @@ export function NewReceptionDialog({ trigger, onSuccess }: { trigger?: React.Rea
 
   useEffect(() => {
     if (!open) return;
+    // BC réceptionnables : envoyés, ou déjà partiellement reçus (reliquats).
     Promise.all([
       depotsApi.list(),
       purchaseOrdersApi.list({ statut: "ENVOYEE" }),
+      purchaseOrdersApi.list({ statut: "PARTIELLEMENT_RECEPTIONNE" }),
     ])
-      .then(([d, c]) => { setDepots(d); setCommandes(c); })
+      .then(([d, env, part]) => { setDepots(d); setCommandes([...part, ...env]); })
       .catch(() => {});
   }, [open]);
 
@@ -47,14 +52,22 @@ export function NewReceptionDialog({ trigger, onSuccess }: { trigger?: React.Rea
     setLoadingLignes(true);
     purchaseOrdersApi.get(commandeId)
       .then((po) => {
-        const mapped: ReceptionLine[] = (po.lignes || []).map((l: any) => ({
-          purchase_order_line_id: l.id,
-          article_id: l.article_id || null,
-          designation_libre: l.designation_libre || null,
-          designation: l.article_designation || l.designation_libre || "Article sans nom",
-          quantite_commandee: parseFloat(l.quantite),
-          quantite_recue: parseFloat(l.quantite),
-        }));
+        // Pré-remplissage avec le reste à livrer de chaque ligne.
+        const mapped: ReceptionLine[] = (po.lignes || []).map((l: any) => {
+          const commandee = parseFloat(l.quantite);
+          const dejaRecu = parseFloat(l.quantite_recue) || 0;
+          return {
+            purchase_order_line_id: l.id,
+            article_id: l.article_id || null,
+            designation_libre: l.designation_libre || null,
+            designation: l.article_code
+              ? `${l.article_code} — ${l.article_designation}`
+              : l.article_designation || l.designation_libre || "Article sans nom",
+            quantite_commandee: commandee,
+            deja_recu: dejaRecu,
+            quantite_recue: Math.max(0, commandee - dejaRecu),
+          };
+        });
         setLignes(mapped);
       })
       .catch(() => setLignes([]))
@@ -72,10 +85,16 @@ export function NewReceptionDialog({ trigger, onSuccess }: { trigger?: React.Rea
 
   const submit = async () => {
     if (!depot || !date) { toast.error("Champs obligatoires manquants"); return; }
+    const depassement = lignes.find((l) => l.quantite_recue > reste(l));
+    if (depassement) {
+      toast.error("Quantité reçue supérieure au reste à livrer", { description: depassement.designation });
+      return;
+    }
     const lignesValides = lignes.filter((l) => l.quantite_recue > 0);
+    if (commandeId && lignesValides.length === 0) { toast.error("Aucune quantité reçue"); return; }
     setSaving(true);
     try {
-      await receiptsApi.create({
+      const br = await receiptsApi.create({
         purchase_order_id: commandeId || undefined,
         depot_id: depot,
         date_reception: date,
@@ -88,10 +107,11 @@ export function NewReceptionDialog({ trigger, onSuccess }: { trigger?: React.Rea
           purchase_order_line_id: l.purchase_order_line_id,
         })) : undefined,
       });
-      toast.success("Réception enregistrée", {
-        description: lignesValides.length > 0
-          ? `${lignesValides.length} article(s) ajouté(s) au stock.`
-          : conformite === "CONFORME" ? "Stock mis à jour." : "Réserve enregistrée.",
+      toast.success(`Réception ${br.numero} enregistrée`, {
+        description: [
+          lignesValides.length > 0 ? `${lignesValides.length} article(s) ajouté(s) au stock.` : "Réserve enregistrée.",
+          br.commande_statut ? `BC : ${br.commande_statut}.` : "",
+        ].join(" "),
       });
       reset();
       setOpen(false);
@@ -121,7 +141,9 @@ export function NewReceptionDialog({ trigger, onSuccess }: { trigger?: React.Rea
                 <SelectTrigger><SelectValue placeholder="Sélectionner (optionnel)…" /></SelectTrigger>
                 <SelectContent>
                   {commandes.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.numero} — {c.supplier_nom}</SelectItem>
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.numero} — {c.supplier_nom}{c.statut === "PARTIELLEMENT_RECEPTIONNE" ? " (reliquat)" : ""}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -166,7 +188,8 @@ export function NewReceptionDialog({ trigger, onSuccess }: { trigger?: React.Rea
                   <thead className="bg-muted text-muted-foreground">
                     <tr>
                       <th className="text-left px-3 py-2 font-medium">Désignation</th>
-                      <th className="text-right px-3 py-2 font-medium w-28">Commandé</th>
+                      <th className="text-right px-3 py-2 font-medium w-24">Commandé</th>
+                      <th className="text-right px-3 py-2 font-medium w-24">Déjà reçu</th>
                       <th className="text-right px-3 py-2 font-medium w-28">Reçu *</th>
                     </tr>
                   </thead>
@@ -175,11 +198,13 @@ export function NewReceptionDialog({ trigger, onSuccess }: { trigger?: React.Rea
                       <tr key={idx} className="border-t">
                         <td className="px-3 py-2">{l.designation}</td>
                         <td className="px-3 py-2 text-right text-muted-foreground">{l.quantite_commandee}</td>
+                        <td className="px-3 py-2 text-right text-muted-foreground">{l.deja_recu || "—"}</td>
                         <td className="px-3 py-2">
                           <Input
                             type="number"
                             min={0}
-                            max={l.quantite_commandee}
+                            max={reste(l)}
+                            disabled={reste(l) === 0}
                             step="any"
                             value={l.quantite_recue}
                             onChange={(e) => updateQte(idx, e.target.value)}

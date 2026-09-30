@@ -61,12 +61,15 @@ async function findById(id) {
   return { ...r.rows[0], lignes: lignes.rows, approvals: approvals.rows };
 }
 
-async function nextNumero() {
-  const { rows } = await query(
-    `SELECT COUNT(*)::int + 1 AS n FROM requests
-      WHERE EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM now())`,
-  );
+// Numéro = plus grand suffixe de l'année + 1 (un COUNT réattribuerait un numéro
+// déjà pris dès qu'une demande est supprimée ou créée hors séquence).
+async function nextNumero(c) {
   const year = new Date().getFullYear();
+  const { rows } = await c.query(
+    `SELECT COALESCE(MAX(SUBSTRING(numero FROM '^DM-[0-9]{4}-([0-9]+)$')::int), 0) + 1 AS n
+       FROM requests WHERE numero LIKE $1`,
+    [`DM-${year}-%`],
+  );
   return `DM-${year}-${String(rows[0].n).padStart(4, '0')}`;
 }
 
@@ -77,7 +80,9 @@ async function create({ requester_id, project_id, site_id, budget_lot_id, urgenc
     if (statut === 'SUSPENDU') throw new HttpError(403, 'Ce projet est suspendu — aucune nouvelle demande ne peut y être soumise.');
     if (statut === 'SUPPRIME') throw new HttpError(403, 'Ce projet est supprimé.');
 
-    const numero = await nextNumero();
+    // Verrou : deux créations simultanées ne peuvent pas obtenir le même numéro.
+    await c.query(`SELECT pg_advisory_xact_lock(hashtext('requests:numero'))`);
+    const numero = await nextNumero(c);
     const r = await c.query(
       `INSERT INTO requests(numero, requester_id, project_id, site_id, budget_lot_id, statut, urgence, motif, date_souhaitee)
        VALUES ($1,$2,$3,$4,$5,'SOUMISE',$6,$7,$8) RETURNING *`,
@@ -149,8 +154,26 @@ async function cancel(id) {
   return rows[0] || null;
 }
 
+// Étape de validation attendue pour chaque statut du circuit.
+const ETAPE_DU_STATUT = {
+  SOUMISE: 'TECHNIQUE',
+  VALIDATION_TECHNIQUE: 'TECHNIQUE',
+  VALIDATION_BUDGETAIRE: 'BUDGETAIRE',
+  VALIDATION_DIRECTION: 'DIRECTION',
+};
+
 async function addApproval({ request_id, etape, decideur_id, decision, commentaire }) {
   return withTransaction(async (c) => {
+    // Verrou + contrôle : on ne valide que l'étape en cours (pas de saut d'étape,
+    // pas de décision sur une demande déjà approuvée, rejetée ou en complément).
+    const cur = (await c.query(`SELECT numero, statut FROM requests WHERE id = $1 FOR UPDATE`, [request_id])).rows[0];
+    if (!cur) throw new HttpError(404, 'Demande introuvable');
+    const attendue = ETAPE_DU_STATUT[cur.statut];
+    if (!attendue) throw new HttpError(409, `La demande ${cur.numero} est en statut ${cur.statut} : aucune validation attendue`);
+    if (etape !== attendue) {
+      throw new HttpError(409, `La demande ${cur.numero} attend la validation ${attendue}, pas ${etape}`);
+    }
+
     const a = await c.query(
       `INSERT INTO approvals(request_id, etape, decideur_id, decision, commentaire)
        VALUES ($1,$2,$3,$4,$5) RETURNING *`,
@@ -283,13 +306,23 @@ async function addApproval({ request_id, etape, decideur_id, decision, commentai
   });
 }
 
-async function requestComplement(id, commentaire) {
-  const { rows } = await query(
-    `UPDATE requests SET statut = 'EN_COMPLEMENT', updated_at = now() WHERE id = $1
-     AND statut IN ('SOUMISE','VALIDATION_TECHNIQUE','VALIDATION_BUDGETAIRE','VALIDATION_DIRECTION') RETURNING *`,
-    [id],
-  );
-  return rows[0] || null;
+// Demande de complément : tracée dans approvals (décision COMPLEMENT) pour
+// apparaître dans l'historique des échanges de la demande.
+async function requestComplement(id, commentaire, { decideur_id, etape } = {}) {
+  return withTransaction(async (c) => {
+    const { rows } = await c.query(
+      `UPDATE requests SET statut = 'EN_COMPLEMENT', updated_at = now() WHERE id = $1
+       AND statut IN ('SOUMISE','VALIDATION_TECHNIQUE','VALIDATION_BUDGETAIRE','VALIDATION_DIRECTION') RETURNING *`,
+      [id],
+    );
+    if (rows[0] && decideur_id) {
+      await c.query(
+        `INSERT INTO approvals(request_id, etape, decideur_id, decision, commentaire) VALUES ($1,$2,$3,'COMPLEMENT',$4)`,
+        [id, etape ?? 'TECHNIQUE', decideur_id, commentaire ?? null],
+      );
+    }
+    return rows[0] || null;
+  });
 }
 
 async function submit(id) {
@@ -301,13 +334,23 @@ async function submit(id) {
   return rows[0] || null;
 }
 
-async function resubmit(id) {
-  const { rows } = await query(
-    `UPDATE requests SET statut = 'SOUMISE', updated_at = now() WHERE id = $1
-     AND statut = 'EN_COMPLEMENT' RETURNING *`,
-    [id],
-  );
-  return rows[0] || null;
+// Resoumission : la réponse du demandeur au complément est conservée dans
+// approvals (étape COMPLEMENT, décision REPONSE).
+async function resubmit(id, { commentaire, user_id } = {}) {
+  return withTransaction(async (c) => {
+    const { rows } = await c.query(
+      `UPDATE requests SET statut = 'SOUMISE', updated_at = now() WHERE id = $1
+       AND statut = 'EN_COMPLEMENT' RETURNING *`,
+      [id],
+    );
+    if (rows[0] && commentaire && user_id) {
+      await c.query(
+        `INSERT INTO approvals(request_id, etape, decideur_id, decision, commentaire) VALUES ($1,'COMPLEMENT',$2,'REPONSE',$3)`,
+        [id, user_id, commentaire],
+      );
+    }
+    return rows[0] || null;
+  });
 }
 
 module.exports = { list, findById, create, update, cancel, submit, addApproval, requestComplement, resubmit };

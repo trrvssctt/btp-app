@@ -11,6 +11,12 @@ function errorHandler(err, req, res, _next) {
       error: { message: 'Validation error', details: err.flatten().fieldErrors },
     });
   }
+  if (err && err.code === '23505') {
+    const champ = /\((.+?)\)=\((.+?)\)/.exec(err.detail || '');
+    return res.status(409).json({
+      error: { message: champ ? `La valeur « ${champ[2]} » existe déjà (${champ[1]})` : 'Cette valeur existe déjà' },
+    });
+  }
   if (err && err.status) {
     return res.status(err.status).json({
       error: { message: err.message, details: err.details },

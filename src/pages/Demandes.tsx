@@ -3,14 +3,16 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Filter, Download, Loader2 } from "lucide-react";
+import { Search, Download, Loader2, X, FolderKanban, Filter } from "lucide-react";
 import { Link } from "react-router-dom";
 import { demandes as mockDemandes, getChantier, getProjet } from "@/data/mock";
 import { formatDate, formatEur, statutDemandeLabel, statutDemandeTone, urgenceTone } from "@/data/labels";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useUrlFilters } from "@/hooks/useUrlFilters";
 import { NewDemandeDialog } from "@/components/dialogs/NewDemandeDialog";
 import { useApiData } from "@/hooks/useApiData";
-import { requestsApi } from "@/lib/api";
+import { projectsApi, requestsApi } from "@/lib/api";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -19,7 +21,9 @@ type ApiDemande = {
   numero: string;
   motif?: string;
   requester_nom?: string;
+  project_code?: string;
   project_nom?: string;
+  site_code?: string;
   site_nom?: string;
   created_at: string;
   urgence: string;
@@ -35,17 +39,26 @@ const VISIBLE_FROM: Record<string, string[]> = {
 
 const ACHETEUR_STATUTS = ["APPROUVEE", "EN_ACHAT", "EN_PREPARATION", "MISE_A_DISPO"];
 
+const FILTRES = ["projet", "statut", "urgence"] as const;
+
 export default function DemandesPage() {
   const { hasPermission, hasRole } = useAuth();
   const canCreate  = hasPermission("REQUEST_CREATE");
   const isAdmin    = hasRole("ADMIN");
   const isAcheteur = hasRole("ACHETEUR") && !isAdmin;
+  // Le chef de projet suit toutes les demandes de ses projets, quel que soit leur
+  // stade (sa permission de validation budgétaire ne doit pas lui en masquer).
+  const isChefProjet = hasRole("CHEF_PROJET");
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [projets, setProjets] = useState<any[]>([]);
+  const { values: f, debounced, set, clear, active } = useUrlFilters(FILTRES);
+
+  useEffect(() => { projectsApi.list().then(setProjets).catch(() => {}); }, []);
 
   const { data, loading, usingFallback } = useApiData<ApiDemande[]>(
-    () => requestsApi.list(),
+    () => requestsApi.list(debounced.projet ? { project_id: debounced.projet } : undefined),
     // Fallback: convertir le mock au format API
     mockDemandes.map((d) => ({
       id: d.id,
@@ -59,19 +72,19 @@ export default function DemandesPage() {
       montant_estime: d.montantEstime,
       statut: d.statut,
     })),
-    [refreshKey],
+    [refreshKey, debounced.projet],
   );
 
   // Filtre selon la position dans le circuit : chaque valideur ne voit que
   // les demandes ayant déjà franchi les étapes qui le précèdent.
   const roleVisible = useMemo(() => {
-    if (isAdmin) return data;
+    if (isAdmin || isChefProjet) return data;
     if (isAcheteur) return data.filter((d) => ACHETEUR_STATUTS.includes(d.statut));
     for (const [perm, hidden] of Object.entries(VISIBLE_FROM)) {
       if (hasPermission(perm)) return data.filter((d) => !hidden.includes(d.statut));
     }
     return data;
-  }, [data, isAdmin, isAcheteur, hasPermission]);
+  }, [data, isAdmin, isChefProjet, isAcheteur, hasPermission]);
 
   // Onglet "À valider" adapté au rôle
   const attenteStatuts: string[] = (() => {
@@ -87,10 +100,14 @@ export default function DemandesPage() {
       if (filter === "attente"  && !attenteStatuts.includes(d.statut)) return false;
       if (filter === "approuvee" && !["APPROUVEE", "EN_ACHAT", "EN_PREPARATION", "MISE_A_DISPO"].includes(d.statut)) return false;
       if (filter === "cloturee"  && !["CLOTUREE", "REJETEE"].includes(d.statut)) return false;
-      if (search && !`${d.numero} ${d.motif ?? ""} ${d.requester_nom ?? ""}`.toLowerCase().includes(search.toLowerCase())) return false;
+      if (f.statut && d.statut !== f.statut) return false;
+      if (f.urgence && d.urgence !== f.urgence) return false;
+      if (search && !`${d.numero} ${d.motif ?? ""} ${d.requester_nom ?? ""} ${d.project_code ?? ""} ${d.site_code ?? ""} ${d.site_nom ?? ""}`.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [roleVisible, filter, search, attenteStatuts]);
+  }, [roleVisible, filter, search, attenteStatuts, f.statut, f.urgence]);
+
+  const urgences = useMemo(() => Array.from(new Set(roleVisible.map((d) => d.urgence).filter(Boolean))).sort(), [roleVisible]);
 
   return (
     <>
@@ -121,11 +138,51 @@ export default function DemandesPage() {
           <div className="flex-1 flex items-center gap-2 lg:justify-end">
             <div className="relative flex-1 lg:max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Numéro, motif, demandeur…" className="pl-9 h-9" />
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Numéro, motif, demandeur, site…" className="pl-9 h-9" />
             </div>
-            <Button variant="outline" size="sm" className="gap-1.5"><Filter className="w-4 h-4" /> Filtres</Button>
           </div>
         </div>
+        {!usingFallback && (
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3 px-4 py-3 border-b border-border bg-muted/20">
+            <Select value={f.projet || "all"} onValueChange={(v) => set("projet", v === "all" ? "" : v)}>
+              <SelectTrigger className="h-9 w-full lg:w-72">
+                <FolderKanban className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                <SelectValue placeholder="Tous les projets" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les projets</SelectItem>
+                {projets.map((p) => (
+                  <SelectItem key={p.id} value={p.id}><span className="font-mono text-xs mr-2">{p.code}</span>{p.nom}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={f.statut || "all"} onValueChange={(v) => set("statut", v === "all" ? "" : v)}>
+              <SelectTrigger className="h-9 w-full lg:w-52">
+                <Filter className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                <SelectValue placeholder="Tous les statuts" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les statuts</SelectItem>
+                {Object.entries(statutDemandeLabel).map(([k, label]) => <SelectItem key={k} value={k}>{label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={f.urgence || "all"} onValueChange={(v) => set("urgence", v === "all" ? "" : v)}>
+              <SelectTrigger className="h-9 w-full lg:w-40"><SelectValue placeholder="Urgence" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toute urgence</SelectItem>
+                {urgences.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground lg:ml-auto">
+              {loading ? "…" : `${filtered.length} demande${filtered.length !== 1 ? "s" : ""}`}
+            </span>
+            {active > 0 && (
+              <Button variant="ghost" size="sm" onClick={clear} className="h-9 gap-1.5 text-muted-foreground hover:text-foreground">
+                <X className="w-3.5 h-3.5" />Effacer ({active})
+              </Button>
+            )}
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

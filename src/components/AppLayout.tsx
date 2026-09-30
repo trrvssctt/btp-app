@@ -1,12 +1,23 @@
+import { Suspense } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Bell, Search, X, AlertTriangle, XCircle, Info, CheckCircle2 } from "lucide-react";
+import { Bell, Search, X, AlertTriangle, XCircle, Info, CheckCircle2, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useNotifications, AppNotification } from "@/hooks/useNotifications";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+
+/* Loader affiché uniquement dans la zone de contenu — la sidebar et le header
+   restent montés, la navigation ne fait donc plus "sauter" toute l'appli. */
+function ContentLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 const urgenceConfig: Record<string, { icon: React.ElementType; ring: string; bg: string; text: string }> = {
   CRITIQUE: { icon: XCircle,       ring: "ring-destructive/30", bg: "bg-destructive/5",  text: "text-destructive" },
@@ -65,6 +76,7 @@ function NotifItem({ n, onRead, onNavigate }: {
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
 
   return (
@@ -148,8 +160,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </Popover>
             </div>
           </header>
-          <main className="flex-1 p-6 lg:p-8 max-w-[1600px] w-full mx-auto animate-fade-in">
-            {children}
+          <main className="flex-1 p-6 lg:p-8 max-w-[1600px] w-full mx-auto">
+            <Suspense fallback={<ContentLoader />}>
+              <div key={location.pathname} className="animate-fade-in">
+                {children}
+              </div>
+            </Suspense>
           </main>
         </div>
       </div>

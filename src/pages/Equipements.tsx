@@ -5,14 +5,15 @@ import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Wrench, Loader2, Search, X, MapPin, User, Package, History, Link2 } from "lucide-react";
+import { Wrench, Loader2, Search, X, MapPin, User, Package, History, Link2, Settings2 } from "lucide-react";
 import { equipementsApi } from "@/lib/api";
 import { NewEquipementDialog } from "@/components/dialogs/NewEquipementDialog";
 import { AffectEquipementDialog } from "@/components/dialogs/AffectEquipementDialog";
 import { RetourEquipementDialog } from "@/components/dialogs/RetourEquipementDialog";
+import { EtatEquipementDialog } from "@/components/dialogs/EtatEquipementDialog";
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatDate } from "@/data/labels";
+import { formatDate, formatDateTime } from "@/data/labels";
 
 // États spec 12.3 (UC-11)
 type Etat = "DISPONIBLE" | "AFFECTE" | "EN_MAINTENANCE" | "HORS_SERVICE" | "PERDU";
@@ -46,17 +47,25 @@ const etatFilterClass = (active: boolean, etat: Etat) => {
   return map[etat];
 };
 
-// Panneau d'historique d'affectation d'un équipement
-function HistoriquePanel({ equipementId, onClose }: { equipementId: string; onClose: () => void }) {
-  const [history, setHistory] = useState<any[]>([]);
+// Panneau d'historique d'un équipement : affectations + changements d'état, par date
+function HistoriquePanel({ equipement, onClose }: { equipement: any; onClose: () => void }) {
+  const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    equipementsApi.listAssignments(equipementId)
-      .then(setHistory)
-      .catch(() => setHistory([]))
+    Promise.all([
+      equipementsApi.listAssignments(equipement.id).catch(() => []),
+      equipementsApi.listStateChanges(equipement.id).catch(() => []),
+    ])
+      .then(([affs, etats]) => {
+        const merged = [
+          ...affs.map((a: any) => ({ ...a, kind: "affectation", sortDate: a.date_fin ?? a.date_debut, sortTs: a.created_at })),
+          ...etats.map((e: any) => ({ ...e, kind: "etat", sortDate: e.created_at, sortTs: e.created_at })),
+        ].sort((x, y) => String(y.sortDate).localeCompare(String(x.sortDate)) || String(y.sortTs).localeCompare(String(x.sortTs)));
+        setItems(merged);
+      })
       .finally(() => setLoading(false));
-  }, [equipementId]);
+  }, [equipement.id]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
@@ -65,7 +74,10 @@ function HistoriquePanel({ equipementId, onClose }: { equipementId: string; onCl
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-5 border-b border-border">
-          <h3 className="font-semibold">Historique des affectations</h3>
+          <div>
+            <h3 className="font-semibold">Historique</h3>
+            <p className="text-xs text-muted-foreground"><span className="font-mono">{equipement.code_inventaire}</span> — {equipement.designation}</p>
+          </div>
           <Button variant="ghost" size="icon" onClick={onClose} className="w-8 h-8"><X className="w-4 h-4" /></Button>
         </div>
         <div className="overflow-y-auto flex-1 divide-y divide-border">
@@ -73,10 +85,22 @@ function HistoriquePanel({ equipementId, onClose }: { equipementId: string; onCl
             <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" /> Chargement…
             </div>
-          ) : history.length === 0 ? (
-            <div className="py-10 text-center text-muted-foreground text-sm">Aucune affectation enregistrée.</div>
-          ) : history.map((a) => (
-            <div key={a.id} className="p-4 space-y-1">
+          ) : items.length === 0 ? (
+            <div className="py-10 text-center text-muted-foreground text-sm">Aucun événement enregistré.</div>
+          ) : items.map((a) => a.kind === "etat" ? (
+            <div key={`etat-${a.id}`} className="p-4 space-y-1">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className="flex items-center gap-1.5 text-sm font-medium">
+                  <Settings2 className="w-3.5 h-3.5 text-muted-foreground" />
+                  {etatLabel[a.etat_avant] ?? a.etat_avant} → {etatLabel[a.etat_apres] ?? a.etat_apres}
+                </span>
+                <StatusBadge tone={etatTone(a.etat_apres) as any}>Changement d'état</StatusBadge>
+              </div>
+              <p className="text-xs text-muted-foreground">Le {formatDateTime(a.created_at)}{a.user_nom ? ` par ${a.user_nom}` : ""}</p>
+              {a.commentaire && <p className="text-xs text-muted-foreground italic">"{a.commentaire}"</p>}
+            </div>
+          ) : (
+            <div key={`aff-${a.id}`} className="p-4 space-y-1">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
                   {a.site_nom && (
@@ -91,7 +115,7 @@ function HistoriquePanel({ equipementId, onClose }: { equipementId: string; onCl
                   )}
                 </div>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${a.date_fin ? "bg-muted text-muted-foreground" : "bg-info/10 text-info"}`}>
-                  {a.date_fin ? "Clôturé" : "En cours"}
+                  {a.date_fin ? "Affectation clôturée" : "Affectation en cours"}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
@@ -103,7 +127,7 @@ function HistoriquePanel({ equipementId, onClose }: { equipementId: string; onCl
                 </p>
               )}
               {a.commentaire && (
-                <p className="text-xs text-muted-foreground italic">"{a.commentaire}"</p>
+                <p className="text-xs text-muted-foreground italic whitespace-pre-line">"{a.commentaire}"</p>
               )}
               {a.created_by_nom && (
                 <p className="text-xs text-muted-foreground">Par {a.created_by_nom}</p>
@@ -385,6 +409,19 @@ export default function EquipementsPage() {
                       }
                     />
                   )}
+                  {e.etat !== "AFFECTE" && (
+                    <EtatEquipementDialog
+                      equipementId={e.id}
+                      equipementCode={e.code_inventaire}
+                      etatActuel={e.etat}
+                      onSuccess={refresh}
+                      trigger={
+                        <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-muted-foreground">
+                          <Settings2 className="w-3 h-3" /> État
+                        </Button>
+                      }
+                    />
+                  )}
                   <Button
                     size="sm"
                     variant="ghost"
@@ -414,7 +451,7 @@ export default function EquipementsPage() {
       {/* ─── Panneau historique ─── */}
       {historiqueId && historiqueEquipement && (
         <HistoriquePanel
-          equipementId={historiqueId}
+          equipement={historiqueEquipement}
           onClose={() => setHistoriqueId(null)}
         />
       )}

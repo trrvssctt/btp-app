@@ -2,6 +2,7 @@ const { z } = require('zod');
 const asyncHandler = require('../utils/asyncHandler');
 const validate = require('../middleware/validate');
 const model = require('../models/receiptModel');
+const HttpError = require('../utils/HttpError');
 const auditLog = require('../utils/auditLog');
 
 const lineSchema = z.object({
@@ -21,7 +22,14 @@ const createSchema = z.object({
 });
 
 exports.list = asyncHandler(async (req, res) => {
-  res.json({ data: await model.list({ purchase_order_id: req.query.purchase_order_id, depot_id: req.query.depot_id }) });
+  const { purchase_order_id, depot_id, supplier_id, conformite, date_from, date_to, q } = req.query;
+  res.json({ data: await model.list({ purchase_order_id, depot_id, supplier_id, conformite, date_from, date_to, q }) });
+});
+
+exports.get = asyncHandler(async (req, res) => {
+  const receipt = await model.findById(req.params.id);
+  if (!receipt) throw new HttpError(404, 'Réception introuvable');
+  res.json({ data: receipt });
 });
 
 exports.create = [

@@ -13,6 +13,7 @@ router.get('/', asyncHandler(async (_req, res) => {
     { rows: mouvementsParMois },
     { rows: topArticles },
     { rows: budgetLots },
+    { rows: topArticlesCommandes },
   ] = await Promise.all([
     // Budget vs consommé par projet
     query(`SELECT code, nom, client, budget_initial, budget_consomme
@@ -21,23 +22,32 @@ router.get('/', asyncHandler(async (_req, res) => {
     // Répartition des demandes par statut
     query(`SELECT statut, COUNT(*)::int AS count FROM requests GROUP BY statut ORDER BY count DESC`),
 
-    // Top 5 fournisseurs par montant total des commandes
+    // Top 8 fournisseurs par montant des commandes émises (hors brouillons)
     query(`SELECT s.raison_sociale AS nom, COALESCE(SUM(po.montant_total), 0)::numeric AS montant
            FROM purchase_orders po
            JOIN suppliers s ON s.id = po.supplier_id
+          WHERE po.statut <> 'BROUILLON'
            GROUP BY s.id, s.raison_sociale
-           ORDER BY montant DESC LIMIT 5`),
+           ORDER BY montant DESC LIMIT 8`),
 
-    // Mouvements par mois (6 derniers mois)
-    query(`SELECT
-             TO_CHAR(DATE_TRUNC('month', created_at), 'Mon') AS mois,
-             TO_CHAR(DATE_TRUNC('month', created_at), 'YYYY-MM') AS mois_key,
-             SUM(CASE WHEN type_mouvement ILIKE 'ENTREE%' OR type_mouvement = 'TRANSFERT_ENTRANT' THEN 1 ELSE 0 END)::int AS entrees,
-             SUM(CASE WHEN type_mouvement ILIKE 'SORTIE%' OR type_mouvement = 'TRANSFERT_SORTANT' THEN 1 ELSE 0 END)::int AS sorties
-           FROM stock_movements
-           WHERE created_at >= NOW() - INTERVAL '6 months'
-           GROUP BY DATE_TRUNC('month', created_at)
-           ORDER BY DATE_TRUNC('month', created_at)`),
+    // Mouvements par mois : les 6 derniers mois (mois en cours inclus), mois vides à 0,
+    // libellés en français (ex. « sept. 26 »).
+    query(`WITH mois AS (
+             SELECT generate_series(DATE_TRUNC('month', NOW()) - INTERVAL '5 months',
+                                    DATE_TRUNC('month', NOW()), INTERVAL '1 month') AS m
+           )
+           SELECT
+             (ARRAY['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'])[EXTRACT(MONTH FROM mois.m)::int]
+               || ' ' || TO_CHAR(mois.m, 'YY') AS mois,
+             TO_CHAR(mois.m, 'YYYY-MM') AS mois_key,
+             COUNT(sm.id) FILTER (WHERE sm.type_mouvement ILIKE 'ENTREE%' OR sm.type_mouvement = 'TRANSFERT_ENTRANT'
+                                   OR (sm.type_mouvement = 'AJUSTEMENT_INVENTAIRE' AND sm.quantite > 0))::int AS entrees,
+             COUNT(sm.id) FILTER (WHERE sm.type_mouvement ILIKE 'SORTIE%' OR sm.type_mouvement = 'TRANSFERT_SORTANT'
+                                   OR (sm.type_mouvement = 'AJUSTEMENT_INVENTAIRE' AND sm.quantite < 0))::int AS sorties
+           FROM mois
+           LEFT JOIN stock_movements sm ON DATE_TRUNC('month', sm.created_at) = mois.m
+           GROUP BY mois.m
+           ORDER BY mois.m`),
 
     // Top 6 articles consommés par valeur estimée
     query(`SELECT a.code, a.designation,
@@ -68,6 +78,17 @@ router.get('/', asyncHandler(async (_req, res) => {
            JOIN projects p ON p.id = bl.project_id
            WHERE p.statut != 'ARCHIVE'
            ORDER BY p.code, bl.code`),
+
+    // Top 6 articles commandés (BC émis, hors brouillons) par montant
+    query(`SELECT a.code, a.designation,
+             SUM(pol.quantite)::float AS quantite,
+             ROUND(SUM(pol.quantite * pol.prix_unitaire) / 1000, 1)::float AS valeur
+           FROM purchase_order_lines pol
+           JOIN purchase_orders po ON po.id = pol.purchase_order_id
+           JOIN articles a ON a.id = pol.article_id
+           WHERE po.statut <> 'BROUILLON'
+           GROUP BY a.id, a.code, a.designation
+           ORDER BY valeur DESC LIMIT 6`),
   ]);
 
   res.json({
@@ -78,6 +99,7 @@ router.get('/', asyncHandler(async (_req, res) => {
       mouvementsParMois,
       topArticles,
       budgetLots,
+      topArticlesCommandes,
     },
   });
 }));

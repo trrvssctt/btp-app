@@ -17,6 +17,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCompany } from "@/contexts/CompanyContext";
 
 type NavItem = { title: string; url: string; icon: any; end?: boolean; badge?: number; roles?: string[] };
 
@@ -42,8 +43,8 @@ const referentiels: NavItem[] = [
 const pilotage: NavItem[] = [
   { title: "Reporting", url: "/reporting", icon: BarChart3, roles: ["CHEF_PROJET", "CONTROLEUR", "DG", "DAF", "AUDITEUR"] },
   { title: "Notifications", url: "/notifications", icon: Bell },
-  { title: "Journal d'audit", url: "/audit", icon: ShieldCheck, roles: ["AUDITEUR", "CONTROLEUR"] },
-  { title: "Paramètres", url: "/parametres", icon: Settings, roles: ["ADMIN"] },
+  { title: "Journal d'audit", url: "/audit", icon: ShieldCheck, roles: ["AUDITEUR", "CONTROLEUR", "RESP_TECHNIQUE"] },
+  { title: "Paramètres", url: "/parametres", icon: Settings, roles: ["ADMIN", "RESP_LOGISTIQUE", "ACHETEUR", "MAGASINIER"] },
 ];
 
 const domotiqueItems: NavItem[] = [
@@ -61,6 +62,8 @@ export function AppSidebar() {
   const location = useLocation();
   const { user, logout, hasRole } = useAuth();
   const { enabled: domotiqueEnabled } = useDomotique();
+  const { company } = useCompany();
+  const companyName = company?.raison_sociale || "BTP Manager";
   const initials = user?.nom?.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "??";
   const primaryRole = user?.roles?.[0] || "Utilisateur";
 
@@ -96,12 +99,16 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="border-b border-sidebar-border h-14 px-4 flex items-center">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-md gradient-accent flex items-center justify-center shadow-glow">
-            <Building2 className="w-4 h-4 text-white" />
+          <div className="w-8 h-8 rounded-md gradient-accent flex items-center justify-center shadow-glow overflow-hidden shrink-0">
+            {company?.logo_url ? (
+              <img src={company.logo_url} alt={companyName} className="w-full h-full object-contain" />
+            ) : (
+              <Building2 className="w-4 h-4 text-white" />
+            )}
           </div>
           {!collapsed && (
-            <div className="flex flex-col leading-tight">
-              <span className="font-bold text-sidebar-foreground tracking-tight">BTP Manager</span>
+            <div className="flex flex-col leading-tight min-w-0">
+              <span className="font-bold text-sidebar-foreground tracking-tight truncate" title={companyName}>{companyName}</span>
               <span className="text-[10px] text-sidebar-foreground/50 uppercase tracking-wider">Stocks & Chantiers</span>
             </div>
           )}

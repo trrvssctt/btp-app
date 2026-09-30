@@ -3,14 +3,16 @@ const asyncHandler = require('../utils/asyncHandler');
 const validate = require('../middleware/validate');
 const HttpError = require('../utils/HttpError');
 const model = require('../models/equipementModel');
-const { auditLog } = require('../utils/auditLog');
+const auditLog = require('../utils/auditLog');
 
 // États valides (spec 12.3 : DISPONIBLE, AFFECTE, EN_MAINTENANCE, HORS_SERVICE, PERDU)
 const ETATS = ['DISPONIBLE', 'AFFECTE', 'EN_MAINTENANCE', 'HORS_SERVICE', 'PERDU'];
 
 const createSchema = z.object({
-  code_inventaire: z.string().min(1).max(60),
-  designation: z.string().min(2).max(200).optional().nullable(),
+  // Famille = segment du code EQ-<FAMILLE>-NNN (ex. BETON, COMP, GENE).
+  famille: z.string().trim().toUpperCase()
+    .regex(/^[A-Z0-9]{2,10}$/, 'Famille : 2 à 10 lettres ou chiffres, sans espace (ex. BETON)'),
+  designation: z.string().min(2).max(200),
   etat: z.enum(ETATS).default('DISPONIBLE'),
   article_id: z.string().uuid().optional().nullable(),
 });
@@ -18,6 +20,7 @@ const createSchema = z.object({
 const updateSchema = z.object({
   etat: z.enum(ETATS).optional(),
   designation: z.string().min(2).max(200).optional().nullable(),
+  commentaire: z.string().max(500).optional().nullable(),
 });
 
 const affectSchema = z.object({
@@ -41,6 +44,10 @@ exports.list = asyncHandler(async (req, res) => {
   res.json({ data: await model.list({ search: req.query.search }) });
 });
 
+exports.listFamilles = asyncHandler(async (req, res) => {
+  res.json({ data: await model.listFamilles() });
+});
+
 exports.get = asyncHandler(async (req, res) => {
   const eq = await model.findById(req.params.id);
   if (!eq) throw new HttpError(404, 'Équipement non trouvé');
@@ -51,7 +58,7 @@ exports.create = [
   validate(createSchema),
   asyncHandler(async (req, res) => {
     const eq = await model.create(req.body);
-    await auditLog({ action: 'CREATE_EQUIPEMENT', entity_type: 'equipements', entity_id: eq.id, actor_id: req.user.id, detail: JSON.stringify(eq) });
+    auditLog({ req, action: 'CREATE', entity_type: 'equipements', entity_id: eq.id, reference: eq.code_inventaire, detail: `Création équipement — ${eq.designation ?? ''} (${eq.etat})` });
     res.status(201).json({ data: eq });
   }),
 ];
@@ -59,15 +66,18 @@ exports.create = [
 exports.update = [
   validate(updateSchema),
   asyncHandler(async (req, res) => {
-    const before = await model.findById(req.params.id);
-    if (!before) throw new HttpError(404, 'Équipement non trouvé');
-    const updated = await model.update(req.params.id, req.body);
-    await auditLog({ action: 'UPDATE_EQUIPEMENT', entity_type: 'equipements', entity_id: updated.id, actor_id: req.user.id, detail: JSON.stringify({ before, after: updated }) });
+    // Le changement d'état est journalisé par le modèle (historique de l'équipement).
+    const updated = await model.update(req.params.id, { ...req.body, actor_id: req.user.id });
+    if (!updated) throw new HttpError(404, 'Équipement non trouvé');
     res.json({ data: updated });
   }),
 ];
 
 // ─── Affectations (UC-11) ─────────────────────────────────────────────────────
+
+exports.listStateChanges = asyncHandler(async (req, res) => {
+  res.json({ data: await model.listStateChanges(req.params.id) });
+});
 
 exports.listAssignments = asyncHandler(async (req, res) => {
   const eq = await model.findById(req.params.id);
@@ -88,13 +98,7 @@ exports.createAssignment = [
       request_id:   req.body.request_id,
     });
 
-    await auditLog({
-      action: 'AFFECTER_EQUIPEMENT',
-      entity_type: 'equipements',
-      entity_id: req.params.id,
-      actor_id: req.user.id,
-      detail: JSON.stringify({ affectation_id: aff.id, site_id: aff.site_id, user_id: aff.user_id, date_debut: aff.date_debut, request_id: aff.request_id }),
-    });
+    auditLog({ req, action: 'AFFECTER', entity_type: 'equipements', entity_id: req.params.id, detail: `Affectation du ${req.body.date_debut}${req.body.commentaire ? ` — ${req.body.commentaire}` : ''}` });
 
     res.status(201).json({ data: aff });
   }),
@@ -109,13 +113,7 @@ exports.returnEquipment = [
       commentaire: req.body.commentaire,
     });
 
-    await auditLog({
-      action: 'RETOUR_EQUIPEMENT',
-      entity_type: 'equipements',
-      entity_id: result.equipment_id,
-      actor_id: req.user.id,
-      detail: JSON.stringify(result),
-    });
+    auditLog({ req, action: 'RETOUR', entity_type: 'equipements', entity_id: result.equipment_id, detail: `Retour — état ${result.etat}${req.body.commentaire ? ` — ${req.body.commentaire}` : ''}` });
 
     res.json({ data: result });
   }),

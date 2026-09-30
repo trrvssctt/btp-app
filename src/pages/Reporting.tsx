@@ -14,7 +14,7 @@ import {
   Download, FileSpreadsheet, Printer, ChevronRight,
 } from "lucide-react";
 import { reportingApi } from "@/lib/api";
-import { formatEur } from "@/data/labels";
+import { formatEur, statutDemandeLabel } from "@/data/labels";
 import { useEffect, useState } from "react";
 import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart,
@@ -242,6 +242,7 @@ export default function ReportingPage() {
     mouvementsParMois: any[];
     topArticles: any[];
     budgetLots: any[];
+    topArticlesCommandes?: any[];
   } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -289,12 +290,15 @@ export default function ReportingPage() {
     consomme: Math.round(Number(p.budget_consomme) / 1_000_000),
   }));
 
-  const statutsData     = requestStatuts.map((r: any) => ({ name: r.statut, value: Number(r.count) }));
+  const statutsData     = requestStatuts.map((r: any) => ({ name: statutDemandeLabel[r.statut as keyof typeof statutDemandeLabel] ?? r.statut, value: Number(r.count) }));
   const fournisseursData = topSuppliers.map((s: any) => ({
     nom:     s.nom.length > 20 ? s.nom.slice(0, 18) + "…" : s.nom,
     montant: Math.round(Number(s.montant) / 1_000_000),
   }));
   const articleUsage = topArticles.map((a: any) => ({ nom: a.code, valeur: Number(a.valeur) }));
+  const articlesCommandes = (data.topArticlesCommandes ?? []).map((a: any) => ({
+    nom: a.code, designation: a.designation, valeur: Number(a.valeur), quantite: Number(a.quantite),
+  }));
 
   return (
     <>
@@ -453,7 +457,27 @@ export default function ReportingPage() {
       )}
 
       {/* Bas de page */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <div className="rounded-xl bg-card border border-border shadow-sm p-5">
+          <h2 className="font-semibold mb-4">Top articles commandés (valeur k FCFA)</h2>
+          {articlesCommandes.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-10">Aucune commande émise.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={articlesCommandes}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="nom" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <Tooltip
+                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                  formatter={(v: number, _n: string, item: any) => [`${v.toLocaleString("fr-SN")} k FCFA — ${item.payload.quantite.toLocaleString("fr-SN")} unités`, item.payload.designation]}
+                />
+                <Bar dataKey="valeur" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
         <div className="rounded-xl bg-card border border-border shadow-sm p-5">
           <h2 className="font-semibold mb-4">Top articles consommés (valeur k FCFA)</h2>
           {articleUsage.length === 0 ? (
@@ -470,7 +494,9 @@ export default function ReportingPage() {
             </ResponsiveContainer>
           )}
         </div>
+      </div>
 
+      <div className="grid grid-cols-1 gap-4">
         <div className="rounded-xl bg-card border border-border shadow-sm p-5">
           <h2 className="font-semibold mb-4">Consommation budgétaire par projet</h2>
           <div className="space-y-4">

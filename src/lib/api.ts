@@ -79,6 +79,12 @@ export const articlesApi = {
 
 export const depotsApi = {
   list: () => api.get<{ data: any[] }>("/depots").then((r) => r.data.data),
+  get: (id: string) => api.get<{ data: any }>(`/depots/${id}`).then((r) => r.data.data),
+  create: (body: { code: string; nom: string; type_depot?: string; localisation?: string | null }) =>
+    api.post<{ data: any }>("/depots", body).then((r) => r.data.data),
+  update: (id: string, body: { code?: string; nom?: string; type_depot?: string; localisation?: string | null }) =>
+    api.put<{ data: any }>(`/depots/${id}`, body).then((r) => r.data.data),
+  remove: (id: string) => api.delete(`/depots/${id}`),
 };
 
 export const stockApi = {
@@ -90,7 +96,7 @@ export const stockApi = {
 };
 
 export const stockMovementsApi = {
-  list: (params?: { article_id?: string; depot_id?: string; type_mouvement?: string }) =>
+  list: (params?: { article_id?: string; depot_id?: string; type_mouvement?: string; sens?: string; date_from?: string; date_to?: string; q?: string; limit?: number }) =>
     api.get<{ data: any[] }>("/stock-movements", { params }).then((r) => r.data.data),
   create: (body: { type_mouvement: string; article_id: string; depot_id: string; quantite: number; reference_doc?: string }) =>
     api.post<{ data: any }>("/stock-movements", body).then((r) => r.data.data),
@@ -98,6 +104,12 @@ export const stockMovementsApi = {
 
 export const suppliersApi = {
   list: () => api.get<{ data: any[] }>("/suppliers").then((r) => r.data.data),
+  get: (id: string) => api.get<{ data: any }>(`/suppliers/${id}`).then((r) => r.data.data),
+  create: (body: { code: string; raison_sociale: string; contact?: string | null; email?: string | null; telephone?: string | null }) =>
+    api.post<{ data: any }>("/suppliers", body).then((r) => r.data.data),
+  update: (id: string, body: { code?: string; raison_sociale?: string; contact?: string | null; email?: string | null; telephone?: string | null }) =>
+    api.put<{ data: any }>(`/suppliers/${id}`, body).then((r) => r.data.data),
+  remove: (id: string) => api.delete(`/suppliers/${id}`),
 };
 
 export const sitesApi = {
@@ -109,6 +121,11 @@ export const sitesApi = {
 
 export const articleFamiliesApi = {
   list: () => api.get<{ data: any[] }>("/article-families").then((r) => r.data.data),
+  create: (body: { code: string; libelle: string }) =>
+    api.post<{ data: any }>("/article-families", body).then((r) => r.data.data),
+  update: (id: string, body: { code?: string; libelle?: string }) =>
+    api.put<{ data: any }>(`/article-families/${id}`, body).then((r) => r.data.data),
+  remove: (id: string) => api.delete(`/article-families/${id}`),
 };
 
 export const unitsApi = {
@@ -116,23 +133,29 @@ export const unitsApi = {
 };
 
 export const transfersApi = {
-  list: (params?: { statut?: string; depot_from?: string; depot_to?: string }) =>
+  list: (params?: { statut?: string; depot_from?: string; depot_to?: string; depot_id?: string; date_from?: string; date_to?: string; q?: string }) =>
     api.get<{ data: any[] }>("/transfers", { params }).then((r) => r.data.data),
+  get: (id: string) => api.get<{ data: any }>(`/transfers/${id}`).then((r) => r.data.data),
   create: (body: { depot_from: string; depot_to: string; lines: { article_id: string; quantite: number }[] }) =>
     api.post<{ data: any }>("/transfers", body).then((r) => r.data.data),
+  receive: (id: string) => api.post<{ data: any }>(`/transfers/${id}/reception`).then((r) => r.data.data),
 };
 
 export const purchaseOrdersApi = {
-  list: (params?: { statut?: string; supplier_id?: string }) =>
+  list: (params?: { statut?: string; supplier_id?: string; request_id?: string }) =>
     api.get<{ data: any[] }>("/purchase-orders", { params }).then((r) => r.data.data),
   get: (id: string) => api.get<{ data: any }>(`/purchase-orders/${id}`).then((r) => r.data.data),
-  create: (body: { supplier_id: string; statut?: string; lignes: { article_id?: string; designation_libre?: string; quantite: number; prix_unitaire: number }[] }) =>
+  create: (body: { supplier_id: string; statut?: string; request_id?: string; lignes: { article_id?: string; designation_libre?: string; quantite: number; prix_unitaire: number }[] }) =>
     api.post<{ data: any }>("/purchase-orders", body).then((r) => r.data.data),
+  update: (id: string, body: { supplier_id: string; statut?: string; lignes: { article_id?: string; designation_libre?: string; quantite: number; prix_unitaire: number }[] }) =>
+    api.put<{ data: any }>(`/purchase-orders/${id}`, body).then((r) => r.data.data),
+  remove: (id: string) => api.delete(`/purchase-orders/${id}`),
 };
 
 export const receiptsApi = {
-  list: (params?: { purchase_order_id?: string; depot_id?: string }) =>
+  list: (params?: { purchase_order_id?: string; depot_id?: string; supplier_id?: string; conformite?: string; date_from?: string; date_to?: string; q?: string }) =>
     api.get<{ data: any[] }>("/receipts", { params }).then((r) => r.data.data),
+  get: (id: string) => api.get<{ data: any }>(`/receipts/${id}`).then((r) => r.data.data),
   create: (body: {
     purchase_order_id?: string;
     depot_id: string;
@@ -157,18 +180,21 @@ export const requestsApi = {
     api.post<{ data: any }>(`/requests/${id}/approvals`, body).then((r) => r.data.data),
   complement: (id: string, commentaire?: string) =>
     api.post<{ data: any }>(`/requests/${id}/complement`, { commentaire }).then((r) => r.data.data),
-  resubmit: (id: string) =>
-    api.post<{ data: any }>(`/requests/${id}/resubmit`, {}).then((r) => r.data.data),
+  resubmit: (id: string, commentaire?: string) =>
+    api.post<{ data: any }>(`/requests/${id}/resubmit`, { commentaire: commentaire || null }).then((r) => r.data.data),
 };
 
 export const equipementsApi = {
   list: (search?: string) =>
     api.get<{ data: any[] }>("/equipements", { params: search ? { search } : undefined }).then((r) => r.data.data),
   get: (id: string) => api.get<{ data: any }>(`/equipements/${id}`).then((r) => r.data.data),
-  create: (body: { code_inventaire: string; designation?: string; etat?: string; article_id?: string }) =>
+  familles: () => api.get<{ data: any[] }>("/equipements/familles").then((r) => r.data.data),
+  create: (body: { famille: string; designation: string; etat?: string; article_id?: string }) =>
     api.post<{ data: any }>("/equipements", body).then((r) => r.data.data),
-  update: (id: string, body: { etat?: string; designation?: string }) =>
+  update: (id: string, body: { etat?: string; designation?: string; commentaire?: string | null }) =>
     api.put<{ data: any }>(`/equipements/${id}`, body).then((r) => r.data.data),
+  listStateChanges: (id: string) =>
+    api.get<{ data: any[] }>(`/equipements/${id}/etats`).then((r) => r.data.data),
   // UC-11 — Affectations
   listAssignments: (id: string) =>
     api.get<{ data: any[] }>(`/equipements/${id}/affectations`).then((r) => r.data.data),
@@ -190,10 +216,33 @@ export const equipementsApi = {
 
 export const usersApi = {
   list: () => api.get<{ data: any[] }>("/users").then((r) => r.data.data),
+  directory: () => api.get<{ data: any[] }>("/users/annuaire").then((r) => r.data.data),
+  create: (body: { email: string; nom: string; password: string; actif?: boolean; roles?: string[] }) =>
+    api.post<{ data: any }>("/users", body).then((r) => r.data.data),
+  update: (id: string, body: { email?: string; nom?: string; password?: string | null; actif?: boolean; roles?: string[] }) =>
+    api.put<{ data: any }>(`/users/${id}`, body).then((r) => r.data.data),
+  remove: (id: string) => api.delete(`/users/${id}`),
 };
 
 export const rolesApi = {
   list: () => api.get<{ data: any[] }>("/roles").then((r) => r.data.data),
+};
+
+export const uploadApi = {
+  image: (image: string, folder?: string) =>
+    api.post<{ data: { url: string; public_id: string } }>("/upload/image", { image, folder }).then((r) => r.data.data),
+};
+
+export const validationRulesApi = {
+  list: () => api.get<{ data: any[] }>("/validation-rules").then((r) => r.data.data),
+  update: (id: string, body: { libelle?: string; seuil_montant?: number; unite?: string; escalade?: string | null; actif?: boolean }) =>
+    api.put<{ data: any }>(`/validation-rules/${id}`, body).then((r) => r.data.data),
+};
+
+export const notificationSettingsApi = {
+  list: () => api.get<{ data: any[] }>("/notification-settings").then((r) => r.data.data),
+  update: (id: string, body: { canal_systeme?: boolean; canal_email?: boolean; actif?: boolean }) =>
+    api.put<{ data: any }>(`/notification-settings/${id}`, body).then((r) => r.data.data),
 };
 
 export const notificationsApi = {
@@ -295,4 +344,23 @@ export const domRuleApi = {
 
 export const domEnergyApi = {
   summary: () => api.get<{ data: any }>(`${dom}/energy`).then(r => r.data.data),
+};
+
+export const companySettingsApi = {
+  get: () => api.get<{ data: any }>("/company-settings").then((r) => r.data.data),
+  update: (data: {
+    raison_sociale: string;
+    logo_url?: string | null;
+    adresse?: string | null;
+    code_postal?: string | null;
+    ville?: string | null;
+    pays?: string | null;
+    telephone?: string | null;
+    email?: string | null;
+    site_web?: string | null;
+    ninea?: string | null;
+    registre_commerce?: string | null;
+    numero_tva?: string | null;
+    devise?: string | null;
+  }) => api.put<{ data: any }>("/company-settings", data).then((r) => r.data.data),
 };

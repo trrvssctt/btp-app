@@ -9,6 +9,7 @@ import { NewCommandeDialog } from "@/components/dialogs/NewCommandeDialog";
 import { useApiData } from "@/hooks/useApiData";
 import { purchaseOrdersApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { Link } from "react-router-dom";
 
 const MOCK_FALLBACK = commandes.map((c) => ({
   id: c.id,
@@ -21,7 +22,7 @@ const MOCK_FALLBACK = commandes.map((c) => ({
 }));
 
 const tone = (s: string) =>
-  s === "RECUE" ? "success" : s === "PARTIELLE" ? "warning" : s === "CLOTUREE" ? "muted" : s === "ENVOYEE" ? "info" : "accent";
+  s === "RECUE" || s === "RECEPTIONNE" ? "success" : s === "PARTIELLE" || s === "PARTIELLEMENT_RECEPTIONNE" ? "warning" : s === "CLOTUREE" || s === "BROUILLON" ? "muted" : s === "ENVOYEE" ? "info" : "accent";
 
 const formatFcfa = (n: number | string | null) =>
   n == null ? "—" : `${Number(n).toLocaleString("fr-SN")} FCFA`;
@@ -64,8 +65,12 @@ export default function AchatsPage() {
               <tr><td colSpan={6} className="py-10 text-center text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Chargement…</td></tr>
             )}
             {!loading && data.map((c) => (
-              <tr key={c.id} className="hover:bg-muted/30 transition-base">
-                <td className="px-4 py-3 font-mono text-xs text-accent">{c.numero}</td>
+              <tr key={c.id} className="hover:bg-muted/30 transition-base cursor-pointer">
+                <td className="px-4 py-3">
+                  <Link to={`/achats/${c.id}`} className="font-mono text-xs text-accent hover:underline">
+                    {c.numero}
+                  </Link>
+                </td>
                 <td className="px-4 py-3 font-medium">{c.supplier_nom}</td>
                 <td className="px-4 py-3 text-muted-foreground tabular-nums">{formatDate(c.created_at)}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{c.nb_lignes ?? "—"}</td>

@@ -32,7 +32,7 @@ async function authenticate(req, _res, next) {
     );
     const user = rows[0];
     if (!user) throw new HttpError(401, 'User no longer exists');
-    if (!user.actif) throw new HttpError(403, 'User is disabled');
+    if (!user.actif) throw new HttpError(403, 'Utilisateur desactivé');
 
     req.user = user;
     next();

@@ -183,10 +183,9 @@ export default function ArticlesPage() {
                 <td className="px-4 py-3 font-medium">
                   <div className="flex items-center gap-1.5">
                     {a.is_used && (
-                      <AlertTriangle
-                        className="w-3.5 h-3.5 text-amber-500 shrink-0"
-                        title="Article référencé dans des documents — modification et suppression bloquées"
-                      />
+                      <span title="Article référencé dans des documents — modification et suppression bloquées" className="shrink-0">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                      </span>
                     )}
                     {a.designation}
                   </div>

@@ -1,294 +1,215 @@
 import { PageHeader } from "@/components/PageHeader";
-import { StatusBadge } from "@/components/StatusBadge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Plus, Save, Loader2, Wifi, Building2, Activity, Zap, Bot } from "lucide-react";
-import { useEffect, useState } from "react";
-import { usersApi, rolesApi, depotsApi, suppliersApi } from "@/lib/api";
-import { typeDepotLabel } from "@/data/labels";
-import { toast } from "sonner";
-import { useDomotique } from "@/contexts/DomotiqueContext";
+import { Separator } from "@/components/ui/separator";
+import {
+  Building2,
+  Users,
+  ShieldCheck,
+  Database,
+  Warehouse,
+  TrendingUp,
+  Settings,
+  ChevronRight,
+  Bell,
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
-const seuils = [
-  { libelle: "Validation technique requise",      montant: 500_000,    escalade: "Responsable Technique" },
-  { libelle: "Validation budgétaire requise",     montant: 2_000_000,  escalade: "Chef de Projet" },
-  { libelle: "Validation direction requise",      montant: 10_000_000, escalade: "DG / DAF" },
-  { libelle: "Blocage dépassement budget projet", montant: 95,         escalade: "Escalade automatique" },
-];
-
-function useData<T>(fetcher: () => Promise<T[]>) {
-  const [data, setData] = useState<T[]>([]);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    fetcher().then(setData).catch(() => setData([])).finally(() => setLoading(false));
-  }, []);
-  return { data, loading };
+interface SettingsSection {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  route: string;
+  color: string;
+  permissions: string[];
+  comingSoon?: boolean;
 }
 
+const settingsSections: SettingsSection[] = [
+  {
+    id: "entreprise",
+    title: "Informations de l'entreprise",
+    description: "Raison sociale, logo, coordonnées, informations légales (NINEA, registre de commerce)",
+    icon: Building2,
+    route: "/parametres/entreprise",
+    color: "bg-blue-500",
+    permissions: ["ADMIN"],
+  },
+  {
+    id: "utilisateurs",
+    title: "Utilisateurs et rôles",
+    description: "Gestion des comptes utilisateurs, attribution des rôles et permissions",
+    icon: Users,
+    route: "/parametres/utilisateurs",
+    color: "bg-purple-500",
+    permissions: ["ADMIN"],
+  },
+  {
+    id: "depots",
+    title: "Dépôts et entrepôts",
+    description: "Configuration des dépôts, magasins et sites de stockage",
+    icon: Warehouse,
+    route: "/parametres/depots",
+    color: "bg-emerald-500",
+    permissions: ["ADMIN", "RESP_LOGISTIQUE"],
+  },
+  {
+    id: "fournisseurs",
+    title: "Fournisseurs",
+    description: "Gestion de la base fournisseurs, contacts et conditions commerciales",
+    icon: TrendingUp,
+    route: "/parametres/fournisseurs",
+    color: "bg-orange-500",
+    permissions: ["ADMIN", "ACHETEUR"],
+  },
+  {
+    id: "familles",
+    title: "Familles d'articles",
+    description: "Catégorisation des articles (maçonnerie, électricité, plomberie...)",
+    icon: Database,
+    route: "/parametres/familles",
+    color: "bg-cyan-500",
+    permissions: ["ADMIN", "MAGASINIER"],
+  },
+  {
+    id: "workflow",
+    title: "Circuit de validation",
+    description: "Paramétrage du workflow d'approbation des demandes",
+    icon: ShieldCheck,
+    route: "/parametres/workflow",
+    color: "bg-rose-500",
+    permissions: ["ADMIN"],
+  },
+  {
+    id: "notifications",
+    title: "Notifications",
+    description: "Configuration des alertes et notifications (email, système)",
+    icon: Bell,
+    route: "/parametres/notifications",
+    color: "bg-indigo-500",
+    permissions: ["ADMIN"],
+  },
+];
+
 export default function ParametresPage() {
-  const { data: utilisateurs, loading: loadUsers } = useData(usersApi.list);
-  const { data: roles,        loading: loadRoles } = useData(rolesApi.list);
-  const { data: depots,       loading: loadDepots } = useData(depotsApi.list);
-  const { data: fournisseurs, loading: loadFournisseurs } = useData(suppliersApi.list);
-  const { enabled: domotiqueEnabled, setEnabled: setDomotiqueEnabled } = useDomotique();
+  const { hasRole } = useAuth();
+
+  // Filtrer les sections selon les permissions
+  const visibleSections = settingsSections.filter((section) =>
+    section.permissions.some((role) => hasRole(role))
+  );
 
   return (
     <>
       <PageHeader
-        breadcrumb="Pilotage"
+        breadcrumb="Administration"
         title="Paramètres"
-        description="Utilisateurs, rôles, dépôts, fournisseurs et seuils de validation."
+        description="Configuration et administration de l'application"
       />
-      <Tabs defaultValue="users">
-        <TabsList className="mb-4 flex-wrap h-auto gap-1">
-          <TabsTrigger value="users">Utilisateurs</TabsTrigger>
-          <TabsTrigger value="roles">Rôles & permissions</TabsTrigger>
-          <TabsTrigger value="depots">Dépôts</TabsTrigger>
-          <TabsTrigger value="fournisseurs">Fournisseurs</TabsTrigger>
-          <TabsTrigger value="seuils">Seuils de validation</TabsTrigger>
-          <TabsTrigger value="domotique" className="flex items-center gap-1.5">
-            <Wifi className="w-3.5 h-3.5" /> Domotique
-          </TabsTrigger>
-        </TabsList>
 
-        {/* Utilisateurs */}
-        <TabsContent value="users">
-          <div className="rounded-xl bg-card border border-border shadow-sm">
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <div>
-                <h2 className="font-semibold">Comptes utilisateurs</h2>
-                {!loadUsers && (
-                  <p className="text-xs text-muted-foreground">
-                    {utilisateurs.length} utilisateurs · {utilisateurs.filter((u: any) => u.actif).length} actifs
-                  </p>
-                )}
-              </div>
-              <Button size="sm" className="gap-1.5" onClick={() => toast.info("Formulaire utilisateur à venir")}>
-                <Plus className="w-4 h-4" /> Inviter
-              </Button>
-            </div>
-            {loadUsers ? (
-              <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" /> Chargement…
-              </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
-                  <tr>
-                    <th className="text-left font-medium px-4 py-3">Nom</th>
-                    <th className="text-left font-medium px-4 py-3">Email</th>
-                    <th className="text-left font-medium px-4 py-3">Rôle(s)</th>
-                    <th className="text-left font-medium px-4 py-3">Statut</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {utilisateurs.map((u: any) => (
-                    <tr key={u.id} className="hover:bg-muted/30 transition-base">
-                      <td className="px-4 py-3 font-medium">{u.nom}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
-                      <td className="px-4 py-3 text-sm">{(u.role_libelles ?? []).join(", ") || "—"}</td>
-                      <td className="px-4 py-3">
-                        <StatusBadge tone={u.actif ? "success" : "muted"}>{u.actif ? "Actif" : "Désactivé"}</StatusBadge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </TabsContent>
-
-        {/* Rôles */}
-        <TabsContent value="roles">
-          {loadRoles ? (
-            <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" /> Chargement…
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {roles.map((r: any) => (
-                <div key={r.id} className="rounded-xl bg-card border border-border p-5">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold">{r.libelle}</h3>
-                    <StatusBadge tone="accent">{r.code}</StatusBadge>
-                  </div>
-                  <p className="text-sm text-muted-foreground font-mono text-xs">{r.code}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Dépôts */}
-        <TabsContent value="depots">
-          <div className="rounded-xl bg-card border border-border shadow-sm">
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <h2 className="font-semibold">Dépôts & emplacements</h2>
-              <Button size="sm" className="gap-1.5" onClick={() => toast.info("Formulaire dépôt à venir")}>
-                <Plus className="w-4 h-4" /> Nouveau dépôt
-              </Button>
-            </div>
-            {loadDepots ? (
-              <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" /> Chargement…
-              </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
-                  <tr>
-                    <th className="text-left font-medium px-4 py-3">Code</th>
-                    <th className="text-left font-medium px-4 py-3">Nom</th>
-                    <th className="text-left font-medium px-4 py-3">Type</th>
-                    <th className="text-left font-medium px-4 py-3">Localisation</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {depots.map((d: any) => (
-                    <tr key={d.id} className="hover:bg-muted/30 transition-base">
-                      <td className="px-4 py-3 font-mono text-xs">{d.code}</td>
-                      <td className="px-4 py-3 font-medium">{d.nom}</td>
-                      <td className="px-4 py-3">
-                        <StatusBadge tone="info">{typeDepotLabel[d.type_depot as keyof typeof typeDepotLabel] ?? d.type_depot}</StatusBadge>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">{d.localisation ?? "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </TabsContent>
-
-        {/* Fournisseurs */}
-        <TabsContent value="fournisseurs">
-          <div className="rounded-xl bg-card border border-border shadow-sm">
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <h2 className="font-semibold">Référentiel fournisseurs</h2>
-              <Button size="sm" className="gap-1.5" onClick={() => toast.info("Formulaire fournisseur à venir")}>
-                <Plus className="w-4 h-4" /> Nouveau fournisseur
-              </Button>
-            </div>
-            {loadFournisseurs ? (
-              <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" /> Chargement…
-              </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
-                  <tr>
-                    <th className="text-left font-medium px-4 py-3">Code</th>
-                    <th className="text-left font-medium px-4 py-3">Raison sociale</th>
-                    <th className="text-left font-medium px-4 py-3">Statut</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {fournisseurs.map((f: any) => (
-                    <tr key={f.id} className="hover:bg-muted/30 transition-base">
-                      <td className="px-4 py-3 font-mono text-xs">{f.code}</td>
-                      <td className="px-4 py-3 font-medium">{f.raison_sociale}</td>
-                      <td className="px-4 py-3">
-                        <StatusBadge tone={f.actif ? "success" : "muted"}>{f.actif ? "Actif" : "Inactif"}</StatusBadge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </TabsContent>
-
-        {/* Domotique */}
-        <TabsContent value="domotique">
-          <div className="rounded-xl bg-card border border-border shadow-sm p-6 space-y-6">
+      <div className="grid gap-6">
+        {/* Message d'information */}
+        <Card className="p-6 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+          <div className="flex items-start gap-3">
+            <Settings className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
             <div>
-              <h2 className="font-semibold flex items-center gap-2">
-                <Wifi className="w-5 h-5 text-primary" /> Module Domotique
-              </h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Activez le module domotique pour superviser, configurer et piloter les immeubles connectés depuis BTP Manager.
+              <h3 className="font-semibold text-blue-900 dark:text-blue-100">
+                Centre de configuration
+              </h3>
+              <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
+                Gérez ici tous les paramètres de votre système BTP Manager : informations de l'entreprise,
+                utilisateurs, dépôts, fournisseurs et workflows.
               </p>
             </div>
+          </div>
+        </Card>
 
-            {/* Toggle principal */}
-            <div className="flex items-center justify-between p-4 rounded-xl bg-muted/40 border border-border">
-              <div className="space-y-1">
-                <p className="font-medium text-sm">Activer la domotique</p>
-                <p className="text-xs text-muted-foreground">
-                  Ajoute la section "Domotique" dans le menu de navigation.
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className={`text-xs font-medium ${domotiqueEnabled ? "text-success" : "text-muted-foreground"}`}>
-                  {domotiqueEnabled ? "Activé" : "Désactivé"}
-                </span>
-                <Switch
-                  checked={domotiqueEnabled}
-                  onCheckedChange={v => {
-                    setDomotiqueEnabled(v);
-                    toast.success(v ? "Module domotique activé — accédez via le menu" : "Module domotique désactivé");
-                  }}
-                />
-              </div>
-            </div>
+        {/* Grille des sections */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {visibleSections.map((section) => {
+            const Icon = section.icon;
+            const isAvailable = !section.comingSoon;
 
-            {/* Fonctionnalités disponibles */}
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Fonctionnalités incluses</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {[
-                  { icon: Building2, label: "Bâtiments", desc: "Configuration des immeubles, étages, appartements et pièces" },
-                  { icon: Wifi, label: "Capteurs & Actionneurs", desc: "Enrôlement et gestion des équipements IoT" },
-                  { icon: Activity, label: "Supervision temps réel", desc: "Dashboard, alertes, historique des mesures" },
-                  { icon: Zap, label: "Énergie intelligente", desc: "Consommation, coûts, projections et optimisation" },
-                  { icon: Bot, label: "Routines & Automatisation", desc: "Règles conditionnelles sans code" },
-                ].map(f => (
-                  <div key={f.label} className="flex items-start gap-3 p-3 rounded-lg border border-border bg-background">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <f.icon className="w-4 h-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">{f.label}</p>
-                      <p className="text-xs text-muted-foreground">{f.desc}</p>
+            return (
+              <Card
+                key={section.id}
+                className={`group relative overflow-hidden transition-all hover:shadow-lg ${
+                  isAvailable ? "cursor-pointer" : "opacity-60"
+                }`}
+              >
+                {isAvailable ? (
+                  <Link to={section.route} className="block p-6">
+                    <SectionContent section={section} Icon={Icon} />
+                  </Link>
+                ) : (
+                  <div className="p-6">
+                    <SectionContent section={section} Icon={Icon} />
+                    <div className="mt-4">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+                        <Settings className="w-3 h-3" />
+                        Bientôt disponible
+                      </span>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
 
-            {domotiqueEnabled && (
-              <div className="flex items-center gap-2 text-sm text-success bg-success/10 border border-success/20 rounded-lg px-4 py-3">
-                <Wifi className="w-4 h-4 shrink-0" />
-                Le module est actif. Retrouvez la section <strong>Domotique</strong> dans le menu de gauche.
-              </div>
-            )}
+        {/* Section système (pour information) */}
+        <Card className="p-6">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold">Informations système</h3>
+            <p className="text-sm text-muted-foreground">Détails techniques de l'application</p>
           </div>
-        </TabsContent>
-
-        {/* Seuils */}
-        <TabsContent value="seuils">
-          <div className="rounded-xl bg-card border border-border shadow-sm p-5 space-y-5">
+          <Separator className="mb-4" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
-              <h2 className="font-semibold">Seuils & escalade</h2>
-              <p className="text-xs text-muted-foreground">Règles automatiques de routage du workflow de validation.</p>
+              <p className="text-muted-foreground mb-1">Version</p>
+              <p className="font-semibold">1.0.0</p>
             </div>
-            {seuils.map((s, i) => (
-              <div key={i} className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-3 items-end pb-4 border-b border-border last:border-0">
-                <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Règle</Label><p className="font-medium text-sm">{s.libelle}</p></div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">{i === 3 ? "Seuil (%)" : "Seuil (FCFA)"}</Label>
-                  <Input type="number" defaultValue={s.montant} className="text-right tabular-nums" />
-                </div>
-                <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">Escalade vers</Label><p className="text-sm">{s.escalade}</p></div>
-                <div className="flex items-center gap-2"><Label className="text-xs">Actif</Label><Switch defaultChecked /></div>
-              </div>
-            ))}
-            <Button className="gap-1.5" onClick={() => toast.success("Paramètres enregistrés (mock)")}><Save className="w-4 h-4" /> Enregistrer</Button>
+            <div>
+              <p className="text-muted-foreground mb-1">Base de données</p>
+              <p className="font-semibold">PostgreSQL</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground mb-1">Environnement</p>
+              <p className="font-semibold">Production</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground mb-1">Dernière mise à jour</p>
+              <p className="font-semibold">06/07/2026</p>
+            </div>
           </div>
-        </TabsContent>
-      </Tabs>
+        </Card>
+      </div>
     </>
+  );
+}
+
+// Composant pour le contenu d'une section
+function SectionContent({ section, Icon }: { section: any; Icon: any }) {
+  return (
+    <div className="relative">
+      {/* Icône en arrière-plan avec couleur */}
+      <div className="absolute -top-2 -right-2 w-20 h-20 rounded-full bg-gradient-to-br from-muted/50 to-muted/20 -z-10 group-hover:scale-110 transition-transform" />
+      <div
+        className={`w-12 h-12 rounded-xl ${section.color} bg-opacity-10 dark:bg-opacity-20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}
+      >
+        <Icon className={`w-6 h-6 ${section.color.replace("bg-", "text-")}`} />
+      </div>
+
+      {/* Contenu */}
+      <h3 className="font-semibold text-base mb-2 flex items-center justify-between">
+        {section.title}
+        {!section.comingSoon && (
+          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+        )}
+      </h3>
+      <p className="text-sm text-muted-foreground line-clamp-2">{section.description}</p>
+    </div>
   );
 }

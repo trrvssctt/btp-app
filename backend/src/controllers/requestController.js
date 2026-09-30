@@ -36,6 +36,24 @@ const ETAPE_PERM = {
   DIRECTION:  'REQUEST_VALIDATE_DIRECTION',
 };
 
+// Étape de validation attendue pour chaque statut du circuit.
+const ETAPE_DU_STATUT = {
+  SOUMISE:               'TECHNIQUE',
+  VALIDATION_TECHNIQUE:  'TECHNIQUE',
+  VALIDATION_BUDGETAIRE: 'BUDGETAIRE',
+  VALIDATION_DIRECTION:  'DIRECTION',
+};
+
+const isAdmin = (req) => req.user.roles.includes('ADMIN');
+const hasPerm = (req, perm) => isAdmin(req) || req.user.permissions.includes(perm);
+
+// Modifier / soumettre / annuler une demande : réservé à son auteur (ou ADMIN).
+function assertAuteur(req, r) {
+  if (r.requester_id !== req.user.id && !isAdmin(req)) {
+    throw new HttpError(403, `Seul l'auteur de la demande ${r.numero} peut effectuer cette action`);
+  }
+}
+
 exports.list = asyncHandler(async (req, res) => {
   res.json({ data: await model.list(req.query) });
 });
@@ -73,6 +91,7 @@ exports.update = [
   asyncHandler(async (req, res) => {
     const r = await model.findById(req.params.id);
     if (!r) throw new HttpError(404, 'Request not found');
+    assertAuteur(req, r);
     if (!['BROUILLON', 'EN_COMPLEMENT'].includes(r.statut)) throw new HttpError(409, 'Only BROUILLON or EN_COMPLEMENT requests can be updated');
     const updated = await model.update(req.params.id, req.body);
     res.json({ data: updated });
@@ -82,6 +101,7 @@ exports.update = [
 exports.cancel = asyncHandler(async (req, res) => {
   const r = await model.findById(req.params.id);
   if (!r) throw new HttpError(404, 'Request not found');
+  assertAuteur(req, r);
   if (!['BROUILLON', 'SOUMISE'].includes(r.statut)) {
     throw new HttpError(409, 'Only BROUILLON or SOUMISE requests can be cancelled');
   }
@@ -93,8 +113,9 @@ exports.addApproval = [
   validate(approvalSchema),
   asyncHandler(async (req, res) => {
     const requiredPerm = ETAPE_PERM[req.body.etape];
-    const ok = requiredPerm && (req.user.permissions.includes(requiredPerm) || req.user.roles.includes('ADMIN'));
+    const ok = requiredPerm && hasPerm(req, requiredPerm);
     if (!ok) throw new HttpError(403, `Permission required: ${requiredPerm}`);
+    // La correspondance étape ↔ statut courant est vérifiée par le modèle, sous verrou.
 
     const a = await model.addApproval({
       request_id: req.params.id,
@@ -119,7 +140,12 @@ exports.requestComplement = [
     if (!['SOUMISE', 'VALIDATION_TECHNIQUE', 'VALIDATION_BUDGETAIRE', 'VALIDATION_DIRECTION'].includes(r.statut)) {
       throw new HttpError(409, 'La demande doit être en cours de validation pour demander un complément');
     }
-    const updated = await model.requestComplement(req.params.id, req.body.commentaire);
+    // Seul le valideur de l'étape en cours peut renvoyer la demande en complément.
+    const perm = ETAPE_PERM[ETAPE_DU_STATUT[r.statut]];
+    if (!hasPerm(req, perm)) throw new HttpError(403, `Permission required: ${perm}`);
+    const updated = await model.requestComplement(req.params.id, req.body.commentaire, {
+      decideur_id: req.user.id, etape: ETAPE_DU_STATUT[r.statut],
+    });
     auditLog({ req, action: 'COMPLEMENT', entity_type: 'Demande', entity_id: req.params.id, detail: req.body.commentaire || '' });
 
     const statut = r.statut;
@@ -165,19 +191,25 @@ exports.requestComplement = [
 exports.submit = asyncHandler(async (req, res) => {
   const r = await model.findById(req.params.id);
   if (!r) throw new HttpError(404, 'Request not found');
+  assertAuteur(req, r);
   if (r.statut !== 'BROUILLON') throw new HttpError(409, 'Seules les demandes BROUILLON peuvent être soumises');
   const updated = await model.submit(req.params.id);
   auditLog({ req, action: 'CREATE', entity_type: 'Demande', entity_id: req.params.id, reference: r.numero, detail: 'Soumission depuis brouillon' });
   res.json({ data: updated });
 });
 
-exports.resubmit = asyncHandler(async (req, res) => {
+const resubmitSchema = z.object({
+  commentaire: z.string().trim().max(1000).optional().nullable(),
+});
+
+exports.resubmit = [validate(resubmitSchema), asyncHandler(async (req, res) => {
   const r = await model.findById(req.params.id);
   if (!r) throw new HttpError(404, 'Request not found');
+  assertAuteur(req, r);
   if (r.statut !== 'EN_COMPLEMENT') {
     throw new HttpError(409, 'Seules les demandes EN_COMPLEMENT peuvent être resoumises');
   }
-  const updated = await model.resubmit(req.params.id);
-  auditLog({ req, action: 'RESUBMIT', entity_type: 'Demande', entity_id: req.params.id, detail: 'Resoumission après complément' });
+  const updated = await model.resubmit(req.params.id, { commentaire: req.body.commentaire || null, user_id: req.user.id });
+  auditLog({ req, action: 'RESUBMIT', entity_type: 'Demande', entity_id: req.params.id, reference: r.numero, detail: `Resoumission après complément${req.body.commentaire ? ` — ${req.body.commentaire}` : ''}` });
   res.json({ data: updated });
-});
+})];

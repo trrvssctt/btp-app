@@ -7,7 +7,7 @@ import {
   MessageSquare, Loader2, RotateCcw, AlertCircle, Send, Pencil, Trash2, Plus, ShoppingCart,
 } from "lucide-react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { requestsApi, articlesApi, apiError } from "@/lib/api";
+import { requestsApi, articlesApi, purchaseOrdersApi, apiError } from "@/lib/api";
 import { NewCommandeDialog } from "@/components/dialogs/NewCommandeDialog";
 import { formatDate, formatEur, statutDemandeLabel, statutDemandeTone, urgenceTone } from "@/data/labels";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,6 +27,20 @@ const workflow = [
   { key: "CLOTUREE",              label: "Clôturée",               role: "Système",             etape: null },
 ];
 
+// Décisions qui clôturent une étape (APPROVE : ancien libellé du seed).
+const DECISIONS_ETAPE = ["APPROUVEE", "REJETEE", "APPROVE"];
+
+const etapeLabel: Record<string, string> = {
+  TECHNIQUE: "technique", VALIDATION_TECH: "technique", BUDGETAIRE: "budgétaire", DIRECTION: "DAF", COMPLEMENT: "complément",
+};
+
+const decisionMeta = (decision: string) =>
+  decision === "APPROUVEE" || decision === "APPROVE" ? { label: "Validée", dot: "bg-success" } :
+  decision === "REJETEE" ? { label: "Retournée au demandeur", dot: "bg-destructive" } :
+  decision === "COMPLEMENT" ? { label: "Complément demandé", dot: "bg-warning" } :
+  decision === "REPONSE" ? { label: "Réponse du demandeur", dot: "bg-info" } :
+  { label: decision, dot: "bg-muted-foreground" };
+
 const etapeMap: Record<string, string> = {
   SOUMISE:               "TECHNIQUE",
   VALIDATION_TECHNIQUE:  "TECHNIQUE",
@@ -44,7 +58,8 @@ const etapePerm: Record<string, string> = {
 export default function DemandeDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { hasPermission, hasRole } = useAuth();
+  const { hasPermission, hasRole, user } = useAuth();
+  const [reponse, setReponse] = useState("");
   const [d, setD] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [commentaire, setCommentaire] = useState("");
@@ -57,6 +72,13 @@ export default function DemandeDetail() {
   const [editDate, setEditDate] = useState("");
   const [editLignes, setEditLignes] = useState<Array<{ id: string; articleId: string; designationLibre: string; quantite: string }>>([]);
   const [allArticles, setAllArticles] = useState<any[]>([]);
+
+  const [linkedPOs, setLinkedPOs] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!id) return;
+    purchaseOrdersApi.list({ request_id: id }).then(setLinkedPOs).catch(() => setLinkedPOs([]));
+  }, [id]);
 
   const reload = () => {
     if (!id) return;
@@ -144,7 +166,8 @@ export default function DemandeDetail() {
     if (!id) return;
     setActionLoading("resubmit");
     try {
-      await requestsApi.resubmit(id);
+      await requestsApi.resubmit(id, reponse.trim() || undefined);
+      setReponse("");
       toast.success("Demande resoumise au circuit de validation");
       reload();
     } catch (e: any) {
@@ -173,7 +196,8 @@ export default function DemandeDetail() {
           qte_demandee: parseFloat(l.quantite),
         })),
       });
-      await requestsApi.resubmit(id);
+      await requestsApi.resubmit(id, reponse.trim() || undefined);
+      setReponse("");
       toast.success("Demande modifiée et resoumise au circuit de validation");
       setEditing(false);
       reload();
@@ -294,7 +318,7 @@ export default function DemandeDetail() {
   const currentStepIdx = workflow.findIndex((s) => s.key === d.statut);
   const isBrouillon = d.statut === "BROUILLON";
   const lastValidatorComment = (d.approvals as any[] | undefined)
-    ?.slice().reverse().find((a) => a.commentaire)?.commentaire ?? null;
+    ?.slice().reverse().find((a) => a.commentaire && a.decision !== "REPONSE")?.commentaire ?? null;
   const isTerminal = ["APPROUVEE", "REJETEE", "CLOTUREE", "MISE_A_DISPO"].includes(d.statut);
   const isValidableStatus = ["SOUMISE", "VALIDATION_TECHNIQUE", "VALIDATION_BUDGETAIRE", "VALIDATION_DIRECTION"].includes(d.statut);
   const canRequestComplement = ["SOUMISE", "VALIDATION_TECHNIQUE", "VALIDATION_BUDGETAIRE", "VALIDATION_DIRECTION"].includes(d.statut);
@@ -302,12 +326,14 @@ export default function DemandeDetail() {
   const canValidate = isValidableStatus && (hasRole("ADMIN") || (!!requiredPerm && hasPermission(requiredPerm)));
   const isEnComplement = d.statut === "EN_COMPLEMENT";
   const canCreateRequest = hasPermission("REQUEST_CREATE");
-  const isOwner = canCreateRequest;
+  // Seul l'auteur (ou un admin) modifie / resoumet sa demande — le serveur l'impose aussi.
+  const isOwner = hasRole("ADMIN") || (!!user && d.requester_id === user.id);
   const canCreatePO = hasRole("ADMIN") || hasRole("ACHETEUR");
 
   const getApproval = (etape: string | null) => {
     if (!etape || !d.approvals) return null;
-    return d.approvals.find((a: any) => a.etape === etape) ?? null;
+    // Dernière décision de l'étape (une étape peut être retournée puis validée).
+    return [...d.approvals].reverse().find((a: any) => a.etape === etape && DECISIONS_ETAPE.includes(a.decision)) ?? null;
   };
 
   return (
@@ -369,6 +395,29 @@ export default function DemandeDetail() {
               })}
             </ol>
           </div>
+
+          {/* Échanges et décisions : validations, retours, compléments et réponses */}
+          {(d.approvals?.length ?? 0) > 0 && (
+            <div className="rounded-xl bg-card border border-border shadow-sm p-5">
+              <h2 className="font-semibold text-foreground mb-4">Échanges et décisions</h2>
+              <ol className="relative border-l border-border ml-2 space-y-4">
+                {d.approvals.map((a: any) => {
+                  const meta = decisionMeta(a.decision);
+                  return (
+                    <li key={a.id} className="ml-4">
+                      <span className={`absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border-2 border-background ${meta.dot}`} />
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                        <span className="font-medium">{meta.label}</span>
+                        {a.decision !== "REPONSE" && <span className="text-xs text-muted-foreground">· étape {etapeLabel[a.etape] ?? a.etape}</span>}
+                        <span className="text-xs text-muted-foreground">· {a.decideur_nom} · {formatDate(a.decided_at)}</span>
+                      </div>
+                      {a.commentaire && <p className="mt-1 text-sm text-muted-foreground whitespace-pre-line">"{a.commentaire}"</p>}
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          )}
 
           {/* Articles demandés */}
           <div className="rounded-xl bg-card border border-border shadow-sm">
@@ -537,6 +586,15 @@ export default function DemandeDetail() {
                     )}
                   </div>
 
+                  {/* Réponse au complément (EN_COMPLEMENT) : conservée dans l'historique */}
+                  {!isBrouillon && (
+                    <div className="space-y-1.5">
+                      <Label>Réponse au complément</Label>
+                      <Textarea value={reponse} onChange={(e) => setReponse(e.target.value)} rows={3}
+                        placeholder="Ex : Précision apportée : raccords Ø110 PVC série S (10 unités)…" />
+                    </div>
+                  )}
+
                   {/* Boutons d'action selon le statut */}
                   {isBrouillon ? (
                     <div className="flex gap-2">
@@ -593,10 +651,14 @@ export default function DemandeDetail() {
                       </Button>
                     </>
                   ) : (
+                    <div className="w-full space-y-2">
+                    <Textarea value={reponse} onChange={(e) => setReponse(e.target.value)} rows={3}
+                      placeholder="Réponse au complément (visible par les valideurs dans l'historique)…" />
                     <Button variant="outline" className="gap-1.5 border-orange-300 text-orange-700 hover:bg-orange-100" onClick={handleResubmit} disabled={!!actionLoading}>
                       {actionLoading === "resubmit" ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
                       Resoumettre sans modification
                     </Button>
+                    </div>
                   )}
                 </div>
               )}
@@ -671,7 +733,21 @@ export default function DemandeDetail() {
               <p className="text-sm text-green-700">
                 Cette demande a obtenu toutes les validations. Créez un bon de commande fournisseur pour déclencher l'approvisionnement.
               </p>
+              {linkedPOs.length > 0 && (
+                <div className="text-sm text-green-800">
+                  <p className="font-medium">Bons de commande déjà émis pour cette demande :</p>
+                  <ul className="mt-1 space-y-0.5">
+                    {linkedPOs.map((po) => (
+                      <li key={po.id}>
+                        <Link to={`/achats/${po.id}`} className="font-mono font-semibold hover:underline">{po.numero}</Link>
+                        {" — "}{po.supplier_nom} · {po.statut}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <NewCommandeDialog
+                requestId={d.id}
                 trigger={
                   <Button className="gap-1.5 bg-green-600 hover:bg-green-700 text-white">
                     <ShoppingCart className="w-4 h-4" /> Créer un bon de commande
@@ -684,7 +760,7 @@ export default function DemandeDetail() {
                     quantite: String(l.qte_approuvee ?? l.qte_demandee),
                     prixMoyen: l.article_prix_moyen ? String(l.article_prix_moyen) : "",
                   }))}
-                onSuccess={() => navigate("/achats")}
+                onSuccess={(po) => navigate(`/achats/${po.id}`)}
               />
             </div>
           )}

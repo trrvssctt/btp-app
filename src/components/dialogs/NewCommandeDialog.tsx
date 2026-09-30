@@ -13,17 +13,28 @@ interface InitialLine { articleId: string; quantite: string; prixMoyen?: string;
 
 const formatFcfa = (n: number) => n > 0 ? `${n.toLocaleString("fr-SN")} FCFA` : "";
 
+/* `order` fourni → mode édition d'un BC brouillon existant.
+   `requestId` fourni → le BC créé est rattaché à cette demande approuvée. */
 export function NewCommandeDialog({
   trigger,
   onSuccess,
   initialLines,
+  requestId,
+  order,
 }: {
   trigger?: React.ReactNode;
-  onSuccess?: () => void;
+  onSuccess?: (po: any) => void;
   initialLines?: InitialLine[];
+  requestId?: string;
+  order?: any;
 }) {
+  const isEdit = !!order;
   const buildLignes = (): Ligne[] =>
-    initialLines && initialLines.length > 0
+    isEdit && order.lignes?.length > 0
+      ? order.lignes.map((l: any, i: number) => ({
+          id: String(i + 1), articleId: l.article_id ?? "", quantite: String(Number(l.quantite)), prix: String(Number(l.prix_unitaire)),
+        }))
+      : initialLines && initialLines.length > 0
       ? initialLines.map((l, i) => ({ id: String(i + 1), articleId: l.articleId, quantite: l.quantite, prix: l.prixMoyen ?? "" }))
       : [{ id: "1", articleId: "", quantite: "", prix: "" }];
 
@@ -32,6 +43,7 @@ export function NewCommandeDialog({
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [articles, setArticles] = useState<any[]>([]);
   const [supplierId, setSupplierId] = useState("");
+  const [statut, setStatut] = useState("BROUILLON");
   const [lignes, setLignes] = useState<Ligne[]>(buildLignes());
 
   useEffect(() => {
@@ -40,19 +52,20 @@ export function NewCommandeDialog({
       .then(([s, a]) => { setSuppliers(s); setArticles(a); })
       .catch(() => {});
     setLignes(buildLignes());
+    if (isEdit) { setSupplierId(order.supplier_id); setStatut(order.statut); }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const total = lignes.reduce((s, l) => s + (parseFloat(l.quantite) || 0) * (parseFloat(l.prix) || 0), 0);
 
-  const reset = () => { setSupplierId(""); setLignes(buildLignes()); };
+  const reset = () => { setSupplierId(""); setStatut("BROUILLON"); setLignes(buildLignes()); };
 
-  const submit = async (statut: string) => {
+  const submit = async () => {
     if (!supplierId || lignes.some((l) => !l.articleId || !l.quantite || !l.prix)) {
       toast.error("Champs obligatoires manquants"); return;
     }
     setSaving(true);
     try {
-      await purchaseOrdersApi.create({
+      const body = {
         supplier_id: supplierId,
         statut,
         lignes: lignes.map((l) => ({
@@ -60,15 +73,20 @@ export function NewCommandeDialog({
           quantite: parseFloat(l.quantite),
           prix_unitaire: parseFloat(l.prix),
         })),
-      });
-      toast.success(statut === "BROUILLON" ? "Brouillon enregistré" : "Bon de commande créé", {
+      };
+      const po = isEdit
+        ? await purchaseOrdersApi.update(order.id, body)
+        : await purchaseOrdersApi.create({ ...body, ...(requestId ? { request_id: requestId } : {}) });
+      const msg = statut === "BROUILLON" ? (isEdit ? "Brouillon mis à jour" : "Brouillon enregistré") :
+                  statut === "ENVOYEE" ? `Bon de commande ${po.numero} envoyé` : "Bon de commande créé";
+      toast.success(msg, {
         description: `Montant : ${formatFcfa(total)}`,
       });
       reset();
       setOpen(false);
-      onSuccess?.();
+      onSuccess?.(po);
     } catch (err) {
-      toast.error("Erreur lors de la création", { description: apiError(err) });
+      toast.error(isEdit ? "Erreur lors de la modification" : "Erreur lors de la création", { description: apiError(err) });
     } finally {
       setSaving(false);
     }
@@ -81,20 +99,32 @@ export function NewCommandeDialog({
       </DialogTrigger>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Nouveau bon de commande</DialogTitle>
+          <DialogTitle>{isEdit ? `Modifier le bon de commande ${order.numero}` : "Nouveau bon de commande"}</DialogTitle>
           <DialogDescription>Engagement fournisseur — réceptions partielles autorisées.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Fournisseur *</Label>
-            <Select value={supplierId} onValueChange={setSupplierId}>
-              <SelectTrigger><SelectValue placeholder="Choisir…" /></SelectTrigger>
-              <SelectContent>
-                {suppliers.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.raison_sociale}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Fournisseur *</Label>
+              <Select value={supplierId} onValueChange={setSupplierId}>
+                <SelectTrigger><SelectValue placeholder="Choisir…" /></SelectTrigger>
+                <SelectContent>
+                  {suppliers.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.raison_sociale}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Statut *</Label>
+              <Select value={statut} onValueChange={setStatut}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="BROUILLON">Brouillon</SelectItem>
+                  <SelectItem value="ENVOYEE">Envoyée</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="border border-border rounded-lg overflow-hidden">
             <div className="flex items-center justify-between bg-muted/40 px-3 py-2 border-b border-border">
@@ -151,11 +181,10 @@ export function NewCommandeDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>Annuler</Button>
-          <Button variant="outline" onClick={() => submit("BROUILLON")} disabled={saving}>Brouillon</Button>
-          <Button onClick={() => submit("ENVOYEE")} disabled={saving}>
+          <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving}>Annuler</Button>
+          <Button onClick={submit} disabled={saving}>
             {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-            Émettre le BC
+            {statut === "BROUILLON" ? "Enregistrer le brouillon" : "Émettre le BC"}
           </Button>
         </DialogFooter>
       </DialogContent>

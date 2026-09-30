@@ -5,10 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCompany } from "@/contexts/CompanyContext";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Login() {
   const { login } = useAuth();
+  const { company } = useCompany();
+  const companyName = company?.raison_sociale || "BTP Manager";
   const nav = useNavigate();
   const loc = useLocation() as { state?: { from?: { pathname: string } } };
   const { toast } = useToast();
@@ -35,11 +38,15 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-background p-6">
       <div className="w-full max-w-md">
         <div className="flex items-center gap-3 mb-8 justify-center">
-          <div className="w-11 h-11 rounded-lg gradient-accent flex items-center justify-center shadow-glow">
-            <Building2 className="w-5 h-5 text-white" />
+          <div className="w-11 h-11 rounded-lg gradient-accent flex items-center justify-center shadow-glow overflow-hidden shrink-0">
+            {company?.logo_url ? (
+              <img src={company.logo_url} alt={companyName} className="w-full h-full object-contain" />
+            ) : (
+              <Building2 className="w-5 h-5 text-white" />
+            )}
           </div>
           <div>
-            <h1 className="font-bold text-xl tracking-tight">BTP Manager</h1>
+            <h1 className="font-bold text-xl tracking-tight">{companyName}</h1>
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Stocks & Chantiers</p>
           </div>
         </div>

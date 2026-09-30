@@ -6,11 +6,13 @@ router.use(authenticate);
 
 // CRUD équipement
 router.get('/',    ctrl.list);
+router.get('/familles', ctrl.listFamilles);
 router.get('/:id', ctrl.get);
 router.post('/',   requireRole('ADMIN', 'MAGASINIER', 'CHEF_PROJET', 'RESP_LOGISTIQUE'), ctrl.create);
 router.put('/:id', requireRole('ADMIN', 'MAGASINIER', 'CHEF_PROJET', 'RESP_LOGISTIQUE'), ctrl.update);
 
 // Affectations (UC-11)
+router.get( '/:id/etats', ctrl.listStateChanges);
 router.get( '/:id/affectations',                requireRole('ADMIN', 'MAGASINIER', 'RESP_LOGISTIQUE', 'CHEF_PROJET', 'CONDUCTEUR'), ctrl.listAssignments);
 router.post('/:id/affectations',                requireRole('ADMIN', 'MAGASINIER', 'RESP_LOGISTIQUE'), ctrl.createAssignment);
 router.put( '/:id/affectations/:affId/retour',  requireRole('ADMIN', 'MAGASINIER', 'RESP_LOGISTIQUE'), ctrl.returnEquipment);

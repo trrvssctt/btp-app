@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DomotiqueProvider } from "@/contexts/DomotiqueContext";
+import { CompanyProvider } from "@/contexts/CompanyContext";
 import { AppLayoutRoute } from "@/components/AppLayoutRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
@@ -26,14 +27,24 @@ const Stock                 = lazy(() => import("./pages/Stock.tsx"));
 const StockDetail           = lazy(() => import("./pages/StockDetail.tsx"));
 const Mouvements            = lazy(() => import("./pages/Mouvements.tsx"));
 const Transferts            = lazy(() => import("./pages/Transferts.tsx"));
+const TransfertDetail       = lazy(() => import("./pages/TransfertDetail.tsx"));
 const Achats                = lazy(() => import("./pages/Achats.tsx"));
+const AchatDetail           = lazy(() => import("./pages/AchatDetail.tsx"));
 const Receptions            = lazy(() => import("./pages/Receptions.tsx"));
+const ReceptionDetail       = lazy(() => import("./pages/ReceptionDetail.tsx"));
 const Projets               = lazy(() => import("./pages/Projets.tsx"));
 const ProjetDetail          = lazy(() => import("./pages/ProjetDetail.tsx"));
 const Articles              = lazy(() => import("./pages/Articles.tsx"));
 const Equipements           = lazy(() => import("./pages/Equipements.tsx"));
 const Reporting             = lazy(() => import("./pages/Reporting.tsx"));
 const Parametres            = lazy(() => import("./pages/Parametres.tsx"));
+const ParametresEntreprise  = lazy(() => import("./pages/ParametresEntreprise.tsx"));
+const ParametresUtilisateurs= lazy(() => import("./pages/ParametresUtilisateurs.tsx"));
+const ParametresDepots      = lazy(() => import("./pages/ParametresDepots.tsx"));
+const ParametresFournisseurs= lazy(() => import("./pages/ParametresFournisseurs.tsx"));
+const ParametresFamilles    = lazy(() => import("./pages/ParametresFamilles.tsx"));
+const ParametresWorkflow    = lazy(() => import("./pages/ParametresWorkflow.tsx"));
+const ParametresNotifications = lazy(() => import("./pages/ParametresNotifications.tsx"));
 const Audit                 = lazy(() => import("./pages/Audit.tsx"));
 const Notifications         = lazy(() => import("./pages/Notifications.tsx"));
 
@@ -61,6 +72,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <DomotiqueProvider>
+          <CompanyProvider>
           <AuthProvider>
             <Suspense fallback={<PageLoader />}>
             <Routes>
@@ -75,15 +87,25 @@ const App = () => (
                 <Route path="/stock/:id" element={<RequireRole roles={["MAGASINIER","CONDUCTEUR","CHEF_PROJET","RESP_TECHNIQUE","RESP_LOGISTIQUE"]}><StockDetail /></RequireRole>} />
                 <Route path="/mouvements" element={<RequireRole roles={["MAGASINIER","RESP_LOGISTIQUE"]}><Mouvements /></RequireRole>} />
                 <Route path="/transferts" element={<RequireRole roles={["MAGASINIER","RESP_LOGISTIQUE"]}><Transferts /></RequireRole>} />
+                <Route path="/transferts/:id" element={<RequireRole roles={["MAGASINIER","RESP_LOGISTIQUE"]}><TransfertDetail /></RequireRole>} />
                 <Route path="/achats" element={<RequireRole roles={["ACHETEUR","RESP_LOGISTIQUE"]}><Achats /></RequireRole>} />
+                <Route path="/achats/:id" element={<RequireRole roles={["ACHETEUR","RESP_LOGISTIQUE"]}><AchatDetail /></RequireRole>} />
                 <Route path="/receptions" element={<RequireRole roles={["MAGASINIER","ACHETEUR","RESP_LOGISTIQUE"]}><Receptions /></RequireRole>} />
+                <Route path="/receptions/:id" element={<RequireRole roles={["MAGASINIER","ACHETEUR","RESP_LOGISTIQUE"]}><ReceptionDetail /></RequireRole>} />
                 <Route path="/projets" element={<RequireRole roles={["CHEF_PROJET","CONDUCTEUR","DG","DAF","CONTROLEUR"]}><Projets /></RequireRole>} />
                 <Route path="/projets/:id" element={<RequireRole roles={["CHEF_PROJET","CONDUCTEUR","DG","DAF","CONTROLEUR"]}><ProjetDetail /></RequireRole>} />
                 <Route path="/articles" element={<RequireRole roles={["MAGASINIER","ACHETEUR"]}><Articles /></RequireRole>} />
                 <Route path="/equipements" element={<RequireRole roles={["CHEF_PROJET","CONDUCTEUR","MAGASINIER","RESP_LOGISTIQUE"]}><Equipements /></RequireRole>} />
                 <Route path="/reporting" element={<RequireRole roles={["CHEF_PROJET","CONTROLEUR","DG","DAF","AUDITEUR"]}><Reporting /></RequireRole>} />
-                <Route path="/parametres" element={<RequireRole roles={["ADMIN"]}><Parametres /></RequireRole>} />
-                <Route path="/audit" element={<RequireRole roles={["AUDITEUR","CONTROLEUR"]}><Audit /></RequireRole>} />
+                <Route path="/parametres" element={<RequireRole roles={["ADMIN","RESP_LOGISTIQUE","ACHETEUR","MAGASINIER"]}><Parametres /></RequireRole>} />
+                <Route path="/parametres/entreprise" element={<RequireRole roles={["ADMIN"]}><ParametresEntreprise /></RequireRole>} />
+                <Route path="/parametres/utilisateurs" element={<RequireRole roles={["ADMIN"]}><ParametresUtilisateurs /></RequireRole>} />
+                <Route path="/parametres/depots" element={<RequireRole roles={["ADMIN","RESP_LOGISTIQUE"]}><ParametresDepots /></RequireRole>} />
+                <Route path="/parametres/fournisseurs" element={<RequireRole roles={["ADMIN","ACHETEUR"]}><ParametresFournisseurs /></RequireRole>} />
+                <Route path="/parametres/familles" element={<RequireRole roles={["ADMIN","MAGASINIER"]}><ParametresFamilles /></RequireRole>} />
+                <Route path="/parametres/workflow" element={<RequireRole roles={["ADMIN"]}><ParametresWorkflow /></RequireRole>} />
+                <Route path="/parametres/notifications" element={<RequireRole roles={["ADMIN"]}><ParametresNotifications /></RequireRole>} />
+                <Route path="/audit" element={<RequireRole roles={["AUDITEUR","CONTROLEUR","RESP_TECHNIQUE"]}><Audit /></RequireRole>} />
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/domotique" element={<RequireRole roles={["ADMIN"]}><DomotiqueDashboard /></RequireRole>} />
                 <Route path="/domotique/batiments" element={<RequireRole roles={["ADMIN"]}><DomotiqueBatiments /></RequireRole>} />
@@ -98,6 +120,7 @@ const App = () => (
             </Routes>
             </Suspense>
           </AuthProvider>
+          </CompanyProvider>
         </DomotiqueProvider>
       </BrowserRouter>
     </TooltipProvider>

@@ -1,24 +1,19 @@
 const router = require('express').Router();
-const asyncHandler = require('../utils/asyncHandler');
+const ctrl = require('../controllers/userController');
 const { authenticate, requireRole } = require('../middleware/auth');
-const { query } = require('../db/pool');
 
 router.use(authenticate);
-router.use(requireRole('ADMIN', 'RESP_TECHNIQUE', 'CONTROLEUR', 'CHEF_PROJET'));
 
-router.get('/', asyncHandler(async (_req, res) => {
-  const { rows } = await query(
-    `SELECT
-       u.id, u.email, u.nom, u.actif, u.created_at,
-       ARRAY_AGG(DISTINCT r.code)   FILTER (WHERE r.code IS NOT NULL) AS roles,
-       ARRAY_AGG(DISTINCT r.libelle) FILTER (WHERE r.libelle IS NOT NULL) AS role_libelles
-     FROM users u
-     LEFT JOIN user_roles ur ON ur.user_id = u.id
-     LEFT JOIN roles r ON r.id = ur.role_id
-     GROUP BY u.id
-     ORDER BY u.nom`,
-  );
-  res.json({ data: rows });
-}));
+// Annuaire (id, nom, rôles) : tout utilisateur connecté — listes de destinataires,
+// responsables, etc. La liste complète des comptes reste réservée au pilotage.
+router.get('/annuaire', ctrl.directory);
+
+// Lecture : rôles de pilotage
+router.get('/', requireRole('ADMIN', 'RESP_TECHNIQUE', 'CONTROLEUR', 'CHEF_PROJET'), ctrl.list);
+
+// Écriture : ADMIN uniquement
+router.post('/', requireRole('ADMIN'), ctrl.create);
+router.put('/:id', requireRole('ADMIN'), ctrl.update);
+router.delete('/:id', requireRole('ADMIN'), ctrl.remove);
 
 module.exports = router;

@@ -28,7 +28,7 @@ export function NewSiteDialog({ projectId, trigger, onSuccess }: Props) {
 
   useEffect(() => {
     if (!open) return;
-    usersApi.list()
+    usersApi.directory()
       .then((users) => {
         const filtered = users
           .filter((u: any) => {

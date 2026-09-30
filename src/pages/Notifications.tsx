@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
+import { signalNotificationsChanged } from "@/hooks/useNotifications";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Bell, AlertTriangle, CheckCircle2, FileText, Truck, Package, Clock, Loader2 } from "lucide-react";
@@ -31,6 +32,7 @@ export default function NotificationsPage() {
       try {
         await notificationsApi.markRead(id);
         setItems((s) => s.map((n) => (n.id === id ? { ...n, lu: true } : n)));
+        signalNotificationsChanged();
       } catch { /* silencieux */ }
     } else {
       setItems((s) => s.map((n) => (n.id === id ? { ...n, lu: false } : n)));
@@ -41,6 +43,7 @@ export default function NotificationsPage() {
     try {
       await notificationsApi.markAllRead();
       setItems((s) => s.map((n) => ({ ...n, lu: true })));
+      signalNotificationsChanged();
     } catch { /* silencieux */ }
   };
 

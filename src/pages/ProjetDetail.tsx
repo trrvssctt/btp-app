@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, Loader2, Building2, FileText, Package, ArrowLeftRight,
   ShoppingCart, ClipboardCheck, TrendingUp, MapPin, User, Calendar,
@@ -9,6 +9,10 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { projectsApi, budgetLotsApi } from "@/lib/api";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search as SearchIcon, X as XIcon } from "lucide-react";
 import { NewBudgetLotDialog } from "@/components/dialogs/NewBudgetLotDialog";
 import { NewSiteDialog } from "@/components/dialogs/NewSiteDialog";
 import { EditProjetDialog } from "@/components/dialogs/EditProjetDialog";
@@ -30,7 +34,7 @@ const statutSiteTone = (s: string): Tone =>
   s === "ACTIF" ? "success" : s === "PAUSE" ? "warning" : "muted";
 
 const statutCommandeTone = (s: string): Tone =>
-  s === "RECUE" ? "success" : s === "PARTIELLE" ? "warning" : s === "CLOTUREE" ? "muted" : s === "ENVOYEE" ? "info" : "accent";
+  s === "RECUE" || s === "RECEPTIONNE" ? "success" : s === "PARTIELLE" || s === "PARTIELLEMENT_RECEPTIONNE" ? "warning" : s === "CLOTUREE" || s === "BROUILLON" ? "muted" : s === "ENVOYEE" ? "info" : "accent";
 
 const statutTransfertTone = (s: string): Tone =>
   s === "RECEPTIONNE" ? "success" : s === "EN_TRANSIT" ? "info" : s === "CLOTURE" ? "muted" : "accent";
@@ -58,6 +62,64 @@ function KpiCard({ icon: Icon, label, value, sub, tone = "default" }: {
   );
 }
 
+type Opt = string | { value: string; label: string };
+interface FilterSelect { key: string; label: string; options: Opt[] }
+
+const NO_MATCH = "Aucun résultat pour ces filtres.";
+
+// Valeurs distinctes non vides d'un champ, triées.
+const uniq = (rows: any[], key: string): string[] =>
+  Array.from(new Set(rows.map((r) => r[key]).filter((v) => v != null && v !== ""))).map(String).sort((a, b) => a.localeCompare(b));
+
+// Vrai si la recherche est vide ou contenue dans l'un des champs.
+const matchQ = (q: string, ...vals: unknown[]) =>
+  !q || vals.some((v) => String(v ?? "").toLowerCase().includes(q.toLowerCase()));
+
+// Barre de filtres d'un onglet : recherche + listes déroulantes + compteur.
+function TabFilters({ values, onChange, onClear, placeholder, selects, total, shown }: {
+  values: Record<string, string>;
+  onChange: (key: string, value: string) => void;
+  onClear: () => void;
+  placeholder: string;
+  selects: FilterSelect[];
+  total: number;
+  shown: number;
+}) {
+  if (total === 0) return null;
+  const active = Object.values(values).filter(Boolean).length;
+  return (
+    <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-3">
+      <div className="relative flex-1 min-w-[200px]">
+        <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+        <Input value={values.q ?? ""} onChange={(e) => onChange("q", e.target.value)} placeholder={placeholder} className="pl-9 h-9" />
+        {values.q && (
+          <button onClick={() => onChange("q", "")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            <XIcon className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+      {selects.filter((sel) => sel.options.length > 0).map((sel) => (
+        <Select key={sel.key} value={values[sel.key] || "all"} onValueChange={(v) => onChange(sel.key, v === "all" ? "" : v)}>
+          <SelectTrigger className="h-9 w-full lg:w-48"><SelectValue placeholder={sel.label} /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{sel.label} : tous</SelectItem>
+            {sel.options.map((o) => {
+              const opt = typeof o === "string" ? { value: o, label: o } : o;
+              return <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>;
+            })}
+          </SelectContent>
+        </Select>
+      ))}
+      <span className="text-xs text-muted-foreground whitespace-nowrap">{shown === total ? `${total}` : `${shown} sur ${total}`}</span>
+      {active > 0 && (
+        <Button variant="ghost" size="sm" onClick={onClear} className="h-9 gap-1.5 text-muted-foreground hover:text-foreground">
+          <XIcon className="w-3.5 h-3.5" />Effacer ({active})
+        </Button>
+      )}
+    </div>
+  );
+}
+
 function EmptyState({ message }: { message: string }) {
   return (
     <div className="py-16 text-center text-muted-foreground text-sm">{message}</div>
@@ -72,6 +134,13 @@ export default function ProjetDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [budgetLots, setBudgetLots] = useState<any[]>([]);
+  // Filtres par onglet : { demandes: { q, statut, … }, stock: { … }, … }
+  const [flt, setFlt] = useState<Record<string, Record<string, string>>>({});
+  // Onglet actif dans l'URL (?onglet=stock) : il survit au rechargement.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const onglet = searchParams.get("onglet") || "budget";
+  const setOnglet = (v: string) =>
+    setSearchParams((prev) => { const n = new URLSearchParams(prev); n.set("onglet", v); return n; }, { replace: true });
 
   const reloadLots = () => {
     if (!id) return;
@@ -132,6 +201,38 @@ export default function ProjetDetail() {
   const transfers: any[] = data.transfers ?? [];
   const sites: any[] = data.sites ?? [];
   const statusLogs: any[] = data.statusLogs ?? [];
+
+  // ─── Filtres des onglets ───
+  const fv = (tab: string) => flt[tab] ?? {};
+  const filterProps = (tab: string) => ({
+    values: fv(tab),
+    onChange: (key: string, value: string) => setFlt((p) => ({ ...p, [tab]: { ...p[tab], [key]: value } })),
+    onClear: () => setFlt((p) => ({ ...p, [tab]: {} })),
+  });
+  const isLow = (st: any) => { const seuil = Number(st.seuil_alerte) || 0; return seuil > 0 && Number(st.qte_disponible) <= seuil; };
+
+  const fc = fv("chantiers");
+  const fSites = sites.filter((c) => matchQ(fc.q, c.code, c.nom, c.localisation, c.responsable) && (!fc.statut || c.statut === fc.statut));
+  const fd = fv("demandes");
+  const fRequests = requests.filter((r) => matchQ(fd.q, r.numero, r.motif, r.requester_nom, r.site_nom)
+    && (!fd.site || r.site_nom === fd.site) && (!fd.statut || r.statut === fd.statut) && (!fd.urgence || r.urgence === fd.urgence));
+  const fm = fv("mouvements");
+  const fMovements = movements.filter((m) => matchQ(fm.q, m.article_code, m.article_designation, m.reference_doc, m.user_nom)
+    && (!fm.type || m.type_mouvement === fm.type) && (!fm.depot || m.depot_nom === fm.depot));
+  const fs = fv("stock");
+  const fStock = stock.filter((st) => matchQ(fs.q, st.article_code, st.article_designation)
+    && (!fs.depot || st.depot_nom === fs.depot)
+    && (!fs.niveau || (fs.niveau === "bas" ? isLow(st) : fs.niveau === "zero" ? Number(st.qte_disponible) <= 0 : !isLow(st))));
+  const fa = fv("achats");
+  const fPurchaseOrders = purchaseOrders.filter((po) => matchQ(fa.q, po.numero, po.supplier_nom)
+    && (!fa.statut || po.statut === fa.statut) && (!fa.fournisseur || po.supplier_nom === fa.fournisseur));
+  const fr = fv("receptions");
+  const fReceipts = receipts.filter((r) => matchQ(fr.q, r.numero, r.commande_numero, r.supplier_nom)
+    && (!fr.conformite || r.conformite === fr.conformite) && (!fr.depot || r.depot_nom === fr.depot));
+  const ft = fv("transferts");
+  const fTransfers = transfers.filter((t) => matchQ(ft.q, t.numero, t.depot_from_code, t.depot_to_code, t.depot_from_nom, t.depot_to_nom)
+    && (!ft.statut || t.statut === ft.statut)
+    && (!ft.depot || t.depot_from_code === ft.depot || t.depot_to_code === ft.depot));
 
   return (
     <>
@@ -243,7 +344,7 @@ export default function ProjetDetail() {
       )}
 
       {/* Tabs */}
-      <Tabs defaultValue="budget" className="space-y-4">
+      <Tabs value={onglet} onValueChange={setOnglet} className="space-y-4">
         <TabsList className="h-auto flex-wrap gap-1 bg-muted/50 p-1 rounded-xl">
           <TabsTrigger value="budget" className="gap-1.5 text-xs sm:text-sm px-3 py-2 rounded-lg">
             <Wallet className="w-3.5 h-3.5" />
@@ -318,11 +419,13 @@ export default function ProjetDetail() {
               <NewSiteDialog projectId={id!} onSuccess={reloadProject} />
             </div>
           )}
-          {sites.length === 0 ? (
-            <EmptyState message="Aucun chantier associé à ce projet." />
+          <TabFilters {...filterProps("chantiers")} placeholder="Code, nom, localisation, responsable…" total={sites.length} shown={fSites.length}
+            selects={[{ key: "statut", label: "Statut", options: uniq(sites, "statut") }]} />
+          {fSites.length === 0 ? (
+            <EmptyState message={sites.length === 0 ? "Aucun chantier associé à ce projet." : NO_MATCH} />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {sites.map((c: any) => (
+              {fSites.map((c: any) => (
                 <div key={c.id} className="rounded-xl bg-card border border-border shadow-sm p-5 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between mb-3">
                     <div>
@@ -352,8 +455,15 @@ export default function ProjetDetail() {
 
         {/* ─── DEMANDES ─── */}
         <TabsContent value="demandes">
-          {requests.length === 0 ? (
-            <EmptyState message="Aucune demande pour ce projet." />
+          <div className="flex justify-end mb-3">
+            <Link to={`/demandes?projet=${id}`} className="text-sm text-accent hover:underline">
+              Ouvrir dans la liste des demandes (filtres, recherche) →
+            </Link>
+          </div>
+          <TabFilters {...filterProps("demandes")} placeholder="Numéro, motif, demandeur…" total={requests.length} shown={fRequests.length}
+            selects={[{ key: "site", label: "Chantier", options: uniq(requests, "site_nom") }, { key: "statut", label: "Statut", options: uniq(requests, "statut") }, { key: "urgence", label: "Urgence", options: uniq(requests, "urgence") }]} />
+          {fRequests.length === 0 ? (
+            <EmptyState message={requests.length === 0 ? "Aucune demande pour ce projet." : NO_MATCH} />
           ) : (
             <div className="rounded-xl bg-card border border-border shadow-sm overflow-hidden">
               <table className="w-full text-sm">
@@ -370,7 +480,7 @@ export default function ProjetDetail() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {requests.map((r: any) => (
+                  {fRequests.map((r: any) => (
                     <tr key={r.id} className="hover:bg-muted/20 transition-colors">
                       <td className="px-4 py-3 font-mono text-xs text-accent">{r.numero}</td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">{r.site_nom}</td>
@@ -402,8 +512,10 @@ export default function ProjetDetail() {
 
         {/* ─── MOUVEMENTS DE STOCK ─── */}
         <TabsContent value="mouvements">
-          {movements.length === 0 ? (
-            <EmptyState message="Aucun mouvement de stock enregistré sur les chantiers de ce projet." />
+          <TabFilters {...filterProps("mouvements")} placeholder="Article, référence, utilisateur…" total={movements.length} shown={fMovements.length}
+            selects={[{ key: "type", label: "Type", options: uniq(movements, "type_mouvement").map((v) => ({ value: v, label: mouvementLabel[v] ?? v })) }, { key: "depot", label: "Dépôt", options: uniq(movements, "depot_nom") }]} />
+          {fMovements.length === 0 ? (
+            <EmptyState message={movements.length === 0 ? "Aucun mouvement de stock enregistré sur les chantiers de ce projet." : NO_MATCH} />
           ) : (
             <div className="rounded-xl bg-card border border-border shadow-sm overflow-hidden">
               <table className="w-full text-sm">
@@ -419,7 +531,7 @@ export default function ProjetDetail() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {movements.map((m: any) => (
+                  {fMovements.map((m: any) => (
                     <tr key={m.id} className="hover:bg-muted/20 transition-colors">
                       <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                         {m.created_at ? formatDate(m.created_at) : "—"}
@@ -447,8 +559,10 @@ export default function ProjetDetail() {
 
         {/* ─── STOCK ─── */}
         <TabsContent value="stock">
-          {stock.length === 0 ? (
-            <EmptyState message="Aucun article en stock trouvé pour les dépôts de ce projet." />
+          <TabFilters {...filterProps("stock")} placeholder="Code ou désignation article…" total={stock.length} shown={fStock.length}
+            selects={[{ key: "depot", label: "Dépôt", options: uniq(stock, "depot_nom") }, { key: "niveau", label: "Niveau", options: [{ value: "bas", label: "Sous le seuil d'alerte" }, { value: "zero", label: "En rupture (0)" }, { value: "ok", label: "Au-dessus du seuil" }] }]} />
+          {fStock.length === 0 ? (
+            <EmptyState message={stock.length === 0 ? "Aucun article en stock trouvé pour les dépôts de ce projet." : NO_MATCH} />
           ) : (
             <div className="rounded-xl bg-card border border-border shadow-sm overflow-hidden">
               <table className="w-full text-sm">
@@ -463,7 +577,7 @@ export default function ProjetDetail() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {stock.map((s: any) => {
+                  {fStock.map((s: any) => {
                     const dispo = Number(s.qte_disponible);
                     const seuil = Number(s.seuil_alerte) || 0;
                     const low = seuil > 0 && dispo <= seuil;
@@ -499,8 +613,10 @@ export default function ProjetDetail() {
 
         {/* ─── ACHATS ─── */}
         <TabsContent value="achats">
-          {purchaseOrders.length === 0 ? (
-            <EmptyState message="Aucune commande enregistrée." />
+          <TabFilters {...filterProps("achats")} placeholder="Numéro de BC, fournisseur…" total={purchaseOrders.length} shown={fPurchaseOrders.length}
+            selects={[{ key: "statut", label: "Statut", options: uniq(purchaseOrders, "statut") }, { key: "fournisseur", label: "Fournisseur", options: uniq(purchaseOrders, "supplier_nom") }]} />
+          {fPurchaseOrders.length === 0 ? (
+            <EmptyState message={purchaseOrders.length === 0 ? "Aucune commande enregistrée." : NO_MATCH} />
           ) : (
             <div className="rounded-xl bg-card border border-border shadow-sm overflow-hidden">
               <table className="w-full text-sm">
@@ -515,7 +631,7 @@ export default function ProjetDetail() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {purchaseOrders.map((po: any) => (
+                  {fPurchaseOrders.map((po: any) => (
                     <tr key={po.id} className="hover:bg-muted/20 transition-colors">
                       <td className="px-4 py-3 font-mono text-xs text-accent">{po.numero}</td>
                       <td className="px-4 py-3 text-xs">{po.supplier_nom}</td>
@@ -535,8 +651,10 @@ export default function ProjetDetail() {
 
         {/* ─── RÉCEPTIONS ─── */}
         <TabsContent value="receptions">
-          {receipts.length === 0 ? (
-            <EmptyState message="Aucune réception enregistrée." />
+          <TabFilters {...filterProps("receptions")} placeholder="N° BR, n° BC, fournisseur…" total={receipts.length} shown={fReceipts.length}
+            selects={[{ key: "conformite", label: "Conformité", options: uniq(receipts, "conformite") }, { key: "depot", label: "Dépôt", options: uniq(receipts, "depot_nom") }]} />
+          {fReceipts.length === 0 ? (
+            <EmptyState message={receipts.length === 0 ? "Aucune réception enregistrée." : NO_MATCH} />
           ) : (
             <div className="rounded-xl bg-card border border-border shadow-sm overflow-hidden">
               <table className="w-full text-sm">
@@ -551,7 +669,7 @@ export default function ProjetDetail() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {receipts.map((r: any) => {
+                  {fReceipts.map((r: any) => {
                     const confTone: Tone = r.conformite === "CONFORME" ? "success" : r.conformite === "RESERVE" ? "destructive" : "warning";
                     return (
                       <tr key={r.id} className="hover:bg-muted/20 transition-colors">
@@ -574,8 +692,10 @@ export default function ProjetDetail() {
 
         {/* ─── TRANSFERTS ─── */}
         <TabsContent value="transferts">
-          {transfers.length === 0 ? (
-            <EmptyState message="Aucun transfert enregistré." />
+          <TabFilters {...filterProps("transferts")} placeholder="Numéro, dépôt…" total={transfers.length} shown={fTransfers.length}
+            selects={[{ key: "statut", label: "Statut", options: uniq(transfers, "statut") }, { key: "depot", label: "Dépôt", options: Array.from(new Set(transfers.flatMap((t) => [t.depot_from_code, t.depot_to_code]).filter(Boolean))).sort() }]} />
+          {fTransfers.length === 0 ? (
+            <EmptyState message={transfers.length === 0 ? "Aucun transfert enregistré." : NO_MATCH} />
           ) : (
             <div className="rounded-xl bg-card border border-border shadow-sm overflow-hidden">
               <table className="w-full text-sm">
@@ -589,7 +709,7 @@ export default function ProjetDetail() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {transfers.map((t: any) => (
+                  {fTransfers.map((t: any) => (
                     <tr key={t.id} className="hover:bg-muted/20 transition-colors">
                       <td className="px-4 py-3 font-mono text-xs text-accent">{t.numero}</td>
                       <td className="px-4 py-3 text-xs">
