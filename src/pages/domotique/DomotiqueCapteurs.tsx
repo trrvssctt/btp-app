@@ -14,6 +14,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Plus, Search, Wifi, WifiOff, AlertCircle, Zap, Loader2, MapPin } from "lucide-react";
 import { domDeviceApi, domBuildingApi } from "@/lib/api";
+import { MqttLinkFields, MqttStatusBadge, emptyMqttLink, type MqttLink } from "@/components/domotique/MqttLinkFields";
 import { toast } from "sonner";
 
 const DEVICE_TYPES = ["Température","Humidité","Présence","Accès porte","Lumière","Climatiseur","Prise intelligente","Compteur énergie"];
@@ -56,6 +57,8 @@ export default function DomotiqueCapteurs() {
   const [fBuilding, setFBuilding] = useState("");
   const [fPower, setFPower]       = useState("");
   const [fKwh, setFKwh]           = useState("120");
+  const [fUnit, setFUnit]         = useState("");
+  const [fMqtt, setFMqtt]         = useState<MqttLink>(emptyMqttLink);
 
   // Cascading location
   const [fTree, setFTree]         = useState<any>(null);
@@ -118,7 +121,7 @@ export default function DomotiqueCapteurs() {
     setFName(""); setFId(""); setFType(DEVICE_TYPES[0]); setFCategory("sensor");
     setFProtocol(PROTOCOLS[0]); setFLocation(""); setFPower(""); setFKwh("120");
     setFFloorId(""); setFSpaceId(""); setFRoomId(""); setFTree(null);
-    setWithEnergy(false);
+    setWithEnergy(false); setFUnit(""); setFMqtt(emptyMqttLink);
   }
 
   const filtered = devices.filter(d => {
@@ -130,13 +133,23 @@ export default function DomotiqueCapteurs() {
 
   async function handleSubmit() {
     if (!fName.trim() || !fId.trim()) { toast.error("Nom et identifiant requis"); return; }
+    if (fProtocol === "MQTT" && !fMqtt.topic.trim()) { toast.error("Topic MQTT requis"); return; }
     try {
       const devId = `dev-${Date.now()}`;
       const payload: any = {
         id: devId, unique_identifier: fId, name: fName, type: fType,
         category: fCategory, protocol: fProtocol, location: fLocation || null,
         building_id: fBuilding || null,
+        floor_id: fFloorId || null,
+        apartment_id: selectedSpace?.kind === "apt" ? selectedSpace.data.id : null,
+        room_id: fRoomId || null,
+        unit: fUnit.trim() || null,
       };
+      if (fProtocol === "MQTT") {
+        payload.mqtt_topic = fMqtt.topic.trim();
+        payload.mqtt_value_path = fMqtt.valuePath.trim() || null;
+        payload.mqtt_command_topic = fCategory !== "sensor" ? fMqtt.commandTopic.trim() || null : null;
+      }
       if (withEnergy && fPower) {
         payload.energy_profile = { nominal_power_watt: Number(fPower), kwh_price: Number(fKwh), can_be_auto_cut: fCategory !== "sensor", priority: "normal" };
       }
@@ -180,7 +193,8 @@ export default function DomotiqueCapteurs() {
             {buildings.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-3">
+          <MqttStatusBadge />
           <Button size="sm" className="gap-1.5" onClick={() => { resetForm(); setModal(true); }}><Plus className="w-4 h-4" /> Nouveau capteur</Button>
         </div>
       </div>
@@ -239,9 +253,9 @@ export default function DomotiqueCapteurs() {
       </div>
 
       <Dialog open={modal} onOpenChange={setModal}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader><DialogTitle>Nouveau capteur / actionneur</DialogTitle></DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 min-w-0">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>Nom affiché</Label><Input placeholder="Température Salon 301" value={fName} onChange={e => setFName(e.target.value)} /></div>
               <div className="space-y-1.5"><Label>Identifiant IoT unique</Label><Input placeholder="BAT-A-E3-APT301-SALON-TEMP" value={fId} onChange={e => setFId(e.target.value)} /></div>
@@ -266,6 +280,16 @@ export default function DomotiqueCapteurs() {
                 <Select value={fBuilding} onValueChange={setFBuilding}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{buildings.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent></Select>
               </div>
             </div>
+            <div className="space-y-1.5">
+              <Label>Unité de mesure</Label>
+              <Input placeholder="°C, %, pH, NTU, ppm…" value={fUnit} onChange={e => setFUnit(e.target.value)} />
+            </div>
+            {fProtocol === "MQTT" && (
+              <div className="pt-2 border-t border-border">
+                <p className="text-sm font-medium mb-3">Liaison au broker MQTT</p>
+                <MqttLinkFields value={fMqtt} onChange={setFMqtt} showCommand={fCategory !== "sensor"} />
+              </div>
+            )}
             {/* Localisation en cascade */}
             <div className="space-y-2">
               <Label>Localisation précise</Label>

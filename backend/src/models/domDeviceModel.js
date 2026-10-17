@@ -45,15 +45,27 @@ async function findByUniqueId(uid) {
   return rows[0] || null;
 }
 
+// Équipements actifs reliés à un topic MQTT (abonnements du client MQTT)
+async function listMqttLinked() {
+  const { rows } = await query(`
+    SELECT id, name, unit, category, mqtt_topic, mqtt_value_path
+      FROM dom_devices
+     WHERE mqtt_topic IS NOT NULL AND actif = true
+  `);
+  return rows;
+}
+
 async function create(d) {
   const { rows } = await query(`
-    INSERT INTO dom_devices(id, unique_identifier, name, type, category, protocol, status, location, building_id, floor_id, apartment_id, room_id, last_seen_at, last_value, unit)
-    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, now(),$13,$14) RETURNING *
+    INSERT INTO dom_devices(id, unique_identifier, name, type, category, protocol, status, location, building_id, floor_id, apartment_id, room_id, last_seen_at, last_value, unit,
+                            mqtt_topic, mqtt_value_path, mqtt_command_topic)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, now(),$13,$14,$15,$16,$17) RETURNING *
   `, [
     d.id, d.unique_identifier, d.name, d.type, d.category ?? 'sensor',
     d.protocol ?? 'LoRaWAN', d.status ?? 'online', d.location ?? null,
     d.building_id ?? null, d.floor_id ?? null, d.apartment_id ?? null, d.room_id ?? null,
     d.last_value ?? null, d.unit ?? null,
+    d.mqtt_topic || null, d.mqtt_value_path || null, d.mqtt_command_topic || null,
   ]);
   return rows[0];
 }
@@ -76,6 +88,9 @@ async function update(id, d) {
   if (d.floor_id !== undefined)     add('floor_id', d.floor_id);
   if (d.apartment_id !== undefined) add('apartment_id', d.apartment_id);
   if (d.room_id !== undefined)      add('room_id', d.room_id);
+  if (d.mqtt_topic !== undefined)         add('mqtt_topic', d.mqtt_topic || null);
+  if (d.mqtt_value_path !== undefined)    add('mqtt_value_path', d.mqtt_value_path || null);
+  if (d.mqtt_command_topic !== undefined) add('mqtt_command_topic', d.mqtt_command_topic || null);
   const { rows } = await query(`UPDATE dom_devices SET ${sets.join(', ')} WHERE id = $1 RETURNING *`, params);
   return rows[0] || null;
 }
@@ -96,4 +111,4 @@ async function upsertEnergyProfile(deviceId, ep) {
   return rows[0];
 }
 
-module.exports = { list, findById, findByUniqueId, create, update, upsertEnergyProfile };
+module.exports = { list, findById, findByUniqueId, listMqttLinked, create, update, upsertEnergyProfile };

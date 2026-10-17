@@ -346,6 +346,14 @@ export const domEnergyApi = {
   summary: () => api.get<{ data: any }>(`${dom}/energy`).then(r => r.data.data),
 };
 
+export interface MqttTopicSample { topic: string; payload: string; retained: boolean; count: number }
+
+export const domMqttApi = {
+  status:   () => api.get<{ data: any }>(`${dom}/mqtt/status`).then(r => r.data.data),
+  discover: (params?: { filter?: string; seconds?: number }) =>
+    api.get<{ data: MqttTopicSample[] }>(`${dom}/mqtt/discover`, { params, timeout: 20000 }).then(r => r.data.data),
+};
+
 export const companySettingsApi = {
   get: () => api.get<{ data: any }>("/company-settings").then((r) => r.data.data),
   update: (data: {

@@ -12,9 +12,13 @@ import {
   Settings,
   ChevronRight,
   Bell,
+  Wifi,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDomotique } from "@/contexts/DomotiqueContext";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
 
 interface SettingsSection {
   id: string;
@@ -95,6 +99,7 @@ const settingsSections: SettingsSection[] = [
 
 export default function ParametresPage() {
   const { hasRole } = useAuth();
+  const { enabled: domotiqueEnabled, setEnabled: setDomotiqueEnabled } = useDomotique();
 
   // Filtrer les sections selon les permissions
   const visibleSections = settingsSections.filter((section) =>
@@ -158,6 +163,37 @@ export default function ParametresPage() {
             );
           })}
         </div>
+
+        {/* Module Domotique : affiche ou masque la section dans le menu */}
+        {hasRole("ADMIN") && (
+          <Card className="p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <Wifi className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Module Domotique</h3>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Ajoute la section « Domotique » dans le menu : supervision, bâtiments, capteurs, contrôle, énergie et routines.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className={`text-xs font-medium ${domotiqueEnabled ? "text-success" : "text-muted-foreground"}`}>
+                  {domotiqueEnabled ? "Activé" : "Désactivé"}
+                </span>
+                <Switch
+                  checked={domotiqueEnabled}
+                  onCheckedChange={(v) => {
+                    setDomotiqueEnabled(v);
+                    toast.success(v ? "Module domotique activé — accédez-y via le menu" : "Module domotique désactivé");
+                  }}
+                />
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* Section système (pour information) */}
         <Card className="p-6">

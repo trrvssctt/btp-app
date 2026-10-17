@@ -28,6 +28,7 @@ import {
 } from "recharts";
 import { domDeviceApi, domReadingApi, domCommandApi, domRuleApi, domBuildingApi } from "@/lib/api";
 import { toast } from "sonner";
+import { MqttLinkFields, emptyMqttLink, type MqttLink } from "@/components/domotique/MqttLinkFields";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const DEVICE_TYPES = ["Température","Humidité","Présence","Accès porte","Lumière","Climatiseur","Prise intelligente","Compteur énergie"];
@@ -99,6 +100,7 @@ export default function DomotiqueCapteurDetail() {
   const [eCategory, setECategory] = useState("sensor");
   const [eProtocol, setEProtocol] = useState(PROTOCOLS[0]);
   const [eUnit,     setEUnit]     = useState("");
+  const [eMqtt,     setEMqtt]     = useState<MqttLink>(emptyMqttLink);
   const [eBuilding, setEBuilding] = useState("");
   // Cascade — useRef flag prevents auto-build from overwriting device location on open
   const cascadeTouched = { current: false };
@@ -148,6 +150,24 @@ export default function DomotiqueCapteurDetail() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Équipement relié au broker : rafraîchissement automatique pour voir les mesures arriver
+  const liveMqtt = Boolean(device?.mqtt_topic && device?.actif);
+  useEffect(() => {
+    if (!id || !liveMqtt) return;
+    const t = setInterval(async () => {
+      try {
+        const [dev, rdgs] = await Promise.all([
+          domDeviceApi.get(id),
+          domReadingApi.list({ device_id: id, limit: 50 }),
+        ]);
+        setDevice(dev);
+        setReadings(rdgs);
+        setIsOn(dev.last_value === "ON" || dev.last_value === "Fermé");
+      } catch { /* nouvel essai au prochain tour */ }
+    }, 5000);
+    return () => clearInterval(t);
+  }, [id, liveMqtt]);
+
   // ── Load tree when eBuilding changes (edit modal) ───────────────────────────
   useEffect(() => {
     // Reset cascade but NOT eLocation — location is only rebuilt when user picks a floor
@@ -196,6 +216,7 @@ export default function DomotiqueCapteurDetail() {
     setECategory(device.category ?? "sensor");
     setEProtocol(device.protocol ?? PROTOCOLS[0]);
     setEUnit(device.unit ?? "");
+    setEMqtt({ topic: device.mqtt_topic ?? "", valuePath: device.mqtt_value_path ?? "", commandTopic: device.mqtt_command_topic ?? "" });
     setEBuilding(device.building_id ?? "");  // do NOT fallback to first building
     setEFloorId(""); setESpaceId(""); setERoomId("");
     setECascadeActive(false);               // don't let auto-build overwrite existing location
@@ -212,6 +233,7 @@ export default function DomotiqueCapteurDetail() {
   async function handleSave() {
     if (!device) return;
     if (!eName.trim()) { toast.error("Le nom est requis"); return; }
+    if (eProtocol === "MQTT" && !eMqtt.topic.trim()) { toast.error("Topic MQTT requis"); return; }
     const powerNum = Number(ePower);
     if (eWithEnergy) {
       if (!ePower || isNaN(powerNum) || powerNum <= 0) {
@@ -229,6 +251,9 @@ export default function DomotiqueCapteurDetail() {
         unit:        eUnit.trim() || null,
         location:    eLocation || null,
         building_id: eBuilding || null,
+        mqtt_topic:         eProtocol === "MQTT" ? eMqtt.topic.trim() : null,
+        mqtt_value_path:    eProtocol === "MQTT" ? eMqtt.valuePath.trim() || null : null,
+        mqtt_command_topic: eProtocol === "MQTT" && eCategory !== "sensor" ? eMqtt.commandTopic.trim() || null : null,
       };
       if (eWithEnergy) {
         payload.energy_profile = {
@@ -281,7 +306,7 @@ export default function DomotiqueCapteurDetail() {
         setDevice((d: any) => ({ ...d, last_value: cmd }));
         toast.success(`${device.name} → ${cmd}`);
       } else {
-        toast.error("Commande échouée — équipement hors ligne");
+        toast.error(device.mqtt_command_topic ? "Commande échouée — broker MQTT injoignable" : "Commande échouée — équipement hors ligne");
       }
     } catch {
       toast.error("Erreur lors de l'envoi");
@@ -342,6 +367,16 @@ export default function DomotiqueCapteurDetail() {
                 {device.category === "sensor" ? "Capteur" : device.category === "actuator" ? "Actionneur" : "Hybride"}
               </span>
               <span className="bg-muted px-2 py-0.5 rounded text-muted-foreground">{device.protocol}</span>
+              {device.mqtt_topic && (
+                <span className="bg-primary/10 text-primary px-2 py-0.5 rounded font-mono" title={device.mqtt_value_path ? `Champ : ${device.mqtt_value_path}` : undefined}>
+                  {device.mqtt_topic}{device.mqtt_value_path ? ` → ${device.mqtt_value_path}` : ""}
+                </span>
+              )}
+              {liveMqtt && (
+                <span className="flex items-center gap-1 text-success">
+                  <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" /> Direct
+                </span>
+              )}
               {device.location && (
                 <span className="text-muted-foreground flex items-center gap-1">
                   <ChevronRight className="w-3 h-3" /> {device.location}
@@ -684,9 +719,9 @@ export default function DomotiqueCapteurDetail() {
 
       {/* ══ MODAL ÉDITION ═════════════════════════════════════════════════════ */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader><DialogTitle>Modifier l'équipement</DialogTitle></DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 min-w-0">
 
             {/* Nom */}
             <div className="space-y-1.5">
@@ -730,6 +765,13 @@ export default function DomotiqueCapteurDetail() {
                 <Input value={eUnit} onChange={e => setEUnit(e.target.value)} placeholder="°C, %, lux…" />
               </div>
             </div>
+
+            {eProtocol === "MQTT" && (
+              <div className="pt-2 border-t border-border">
+                <p className="text-sm font-medium mb-3">Liaison au broker MQTT</p>
+                <MqttLinkFields value={eMqtt} onChange={setEMqtt} showCommand={eCategory !== "sensor"} />
+              </div>
+            )}
 
             {/* Immeuble */}
             {buildings.length > 0 && (

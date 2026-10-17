@@ -3,6 +3,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const validate = require('../middleware/validate');
 const HttpError = require('../utils/HttpError');
 const m = require('../models/domDeviceModel');
+const mqttService = require('../services/mqttService');
 
 const deviceSchema = z.object({
   id:                z.string().min(1).max(50),
@@ -20,6 +21,9 @@ const deviceSchema = z.object({
   room_id:           z.string().uuid().optional().nullable(),
   last_value:        z.string().max(100).optional().nullable(),
   unit:              z.string().max(20).optional().nullable(),
+  mqtt_topic:         z.string().max(300).optional().nullable(),
+  mqtt_value_path:    z.string().max(100).optional().nullable(),
+  mqtt_command_topic: z.string().max(300).optional().nullable(),
   energy_profile: z.object({
     nominal_power_watt:    z.coerce.number().positive(),
     kwh_price:             z.coerce.number().nonnegative().optional(),
@@ -51,6 +55,7 @@ exports.create = [validate(deviceSchema), asyncHandler(async (req, res) => {
   const { energy_profile, ...deviceData } = req.body;
   const device = await m.create(deviceData);
   if (energy_profile) await m.upsertEnergyProfile(device.id, energy_profile);
+  await mqttService.refreshSubscriptions();
   res.status(201).json({ data: await m.findById(device.id) });
 })];
 
@@ -59,5 +64,6 @@ exports.update = [validate(deviceSchema.partial()), asyncHandler(async (req, res
   const device = await m.update(req.params.id, deviceData);
   if (!device) throw new HttpError(404, 'Device not found');
   if (energy_profile) await m.upsertEnergyProfile(device.id, energy_profile);
+  await mqttService.refreshSubscriptions();
   res.json({ data: await m.findById(device.id) });
 })];

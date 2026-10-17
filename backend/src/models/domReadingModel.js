@@ -26,10 +26,18 @@ async function create(r) {
   return rows[0];
 }
 
+async function existsAt(deviceId, receivedAt) {
+  const { rows } = await query(
+    `SELECT 1 FROM dom_readings WHERE device_id = $1 AND received_at = $2::timestamptz LIMIT 1`,
+    [deviceId, receivedAt],
+  );
+  return rows.length > 0;
+}
+
 async function createBulk(readings) {
   const results = [];
   for (const r of readings) results.push(await create(r));
   return results;
 }
 
-module.exports = { list, create, createBulk };
+module.exports = { list, create, existsAt, createBulk };

@@ -7,6 +7,7 @@ const command  = require('../controllers/domCommandController');
 const alert    = require('../controllers/domAlertController');
 const rule     = require('../controllers/domRuleController');
 const energy   = require('../controllers/domEnergyController');
+const mqttCtl  = require('../controllers/domMqttController');
 
 // Toutes les routes domotique nécessitent une authentification + rôle ADMIN
 router.use(authenticate);
@@ -59,6 +60,10 @@ router.put   ('/rules/:id',          rule.update);
 router.delete('/rules/:id',          rule.remove);
 router.patch ('/rules/:id/enabled',  rule.toggle);
 router.post  ('/rules/:id/trigger',  rule.trigger);
+
+// ── Broker MQTT (Home Assistant) ───────────────────────────────────────────
+router.get('/mqtt/status',   mqttCtl.status);
+router.get('/mqtt/discover', mqttCtl.discover);
 
 // ── Énergie ────────────────────────────────────────────────────────────────
 router.get('/energy', energy.summary);
