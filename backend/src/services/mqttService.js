@@ -26,6 +26,7 @@ function connectOptions(clientIdPrefix) {
     clientId: `${clientIdPrefix}-${Math.random().toString(16).slice(2, 8)}`,
     connectTimeout: 10_000,
     reconnectPeriod: 10_000,
+    protocolVersion: env.mqtt.protocolVersion,   // 5 : le broker signale les publications refusées par l'ACL
   };
 }
 
@@ -140,13 +141,35 @@ function start() {
   client.on('message', (topic, payload, packet) => { handleMessage(topic, payload, packet.retain); });
 }
 
-// Publie une commande ; résout true si le broker a accusé réception (QoS 1)
-function publishCommand(topic, command, payload) {
+// Message de commande. Si l'état et la commande partagent le même topic, la commande est
+// écrite au format de l'état (ex. {"value":"OFF","updated_at":…}) et retenue par le broker :
+// l'abonnement relit aussitôt le nouvel état, et tout nouvel abonné le reçoit.
+function buildCommandMessage(device, command, payload) {
+  const sameTopic = device.mqtt_command_topic === device.mqtt_topic;
+  const extra = payload && Object.values(payload).some((v) => v !== null && v !== undefined);
+
+  if (sameTopic && device.mqtt_value_path) {
+    const message = { updated_at: new Date().toISOString() };
+    const keys = device.mqtt_value_path.split('.');
+    let node = message;
+    keys.slice(0, -1).forEach((k) => { node = node[k] = {}; });
+    node[keys[keys.length - 1]] = command;
+    if (extra) Object.assign(message, payload);
+    return { message: JSON.stringify(message), retain: true };
+  }
+  if (extra) return { message: JSON.stringify({ command, ...payload }), retain: sameTopic };
+  return { message: command, retain: sameTopic };
+}
+
+// Publie une commande ; résout true si le broker l'a acceptée (QoS 1, refus ACL inclus en MQTT 5)
+function publishCommand(device, command, payload) {
   return new Promise((resolve) => {
     if (!client || !client.connected) return resolve(false);
-    const extra = payload && Object.values(payload).some((v) => v !== null && v !== undefined);
-    const message = extra ? JSON.stringify({ command, ...payload }) : command;
-    client.publish(topic, message, { qos: 1 }, (err) => resolve(!err));
+    const { message, retain } = buildCommandMessage(device, command, payload);
+    client.publish(device.mqtt_command_topic, message, { qos: 1, retain }, (err) => {
+      if (err) lastError = err.message;
+      resolve(!err);
+    });
   });
 }
 
@@ -189,4 +212,4 @@ function status() {
   };
 }
 
-module.exports = { start, refreshSubscriptions, publishCommand, discover, status, extractValue, extractTimestamp, toNumber, topicMatches };
+module.exports = { start, refreshSubscriptions, publishCommand, buildCommandMessage, discover, status, extractValue, extractTimestamp, toNumber, topicMatches };

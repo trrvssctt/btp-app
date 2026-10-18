@@ -30,6 +30,10 @@ function cmdStatusTone(s: string): "success" | "destructive" | "warning" {
   if (s === "FAILED")   return "destructive";
   return "warning";
 }
+// État « allumé » à partir de la dernière valeur reçue (ON, 1, true, Fermé…)
+function stateIsOn(v: unknown) {
+  return /^(on|1|true|fermé|lock)$/i.test(String(v ?? "").trim());
+}
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
@@ -49,10 +53,25 @@ export default function DomotiqueControle() {
     ]).then(([devs, cmds]) => {
       const acts = devs.filter((d: any) => d.category === "actuator" || d.category === "hybrid");
       setActuators(acts);
-      setStates(Object.fromEntries(acts.map((d: any) => [d.id, d.last_value === "ON" || d.last_value === "Fermé"])));
+      setStates(Object.fromEntries(acts.map((d: any) => [d.id, stateIsOn(d.last_value)])));
       setCommands(cmds);
     }).finally(() => setLoading(false));
   }, []);
+
+  // Actionneurs MQTT : l'état est relu sur leur topic, y compris s'il change depuis Home Assistant
+  const hasMqtt = actuators.some(d => d.mqtt_topic && d.actif);
+  useEffect(() => {
+    if (!hasMqtt) return;
+    const t = setInterval(async () => {
+      try {
+        const devs = await domDeviceApi.list();
+        const acts = devs.filter((d: any) => d.category === "actuator" || d.category === "hybrid");
+        setActuators(acts);
+        setStates(Object.fromEntries(acts.map((d: any) => [d.id, stateIsOn(d.last_value)])));
+      } catch { /* nouvel essai au prochain tour */ }
+    }, 3000);
+    return () => clearInterval(t);
+  }, [hasMqtt]);
 
   function requestToggle(d: any) {
     const isOn = states[d.id];

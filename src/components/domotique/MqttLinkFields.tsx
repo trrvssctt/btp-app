@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Loader2, Radar, Radio } from "lucide-react";
 import { domMqttApi, type MqttTopicSample } from "@/lib/api";
 import { toast } from "sonner";
@@ -10,9 +11,30 @@ export interface MqttLink {
   topic: string;
   valuePath: string;
   commandTopic: string;
+  sameTopic: boolean;   // actionneur : un seul topic pour écrire la commande et lire l'état
 }
 
-export const emptyMqttLink: MqttLink = { topic: "", valuePath: "", commandTopic: "" };
+export const emptyMqttLink: MqttLink = { topic: "", valuePath: "", commandTopic: "", sameTopic: true };
+
+export function mqttLinkFromDevice(d: any): MqttLink {
+  return {
+    topic: d.mqtt_topic ?? "",
+    valuePath: d.mqtt_value_path ?? "",
+    commandTopic: d.mqtt_command_topic ?? "",
+    sameTopic: !d.mqtt_command_topic || d.mqtt_command_topic === d.mqtt_topic,
+  };
+}
+
+// Champs mqtt_* envoyés à l'API
+export function mqttPayload(link: MqttLink, enabled: boolean, withCommand: boolean) {
+  if (!enabled) return { mqtt_topic: null, mqtt_value_path: null, mqtt_command_topic: null };
+  const topic = link.topic.trim();
+  return {
+    mqtt_topic: topic,
+    mqtt_value_path: link.valuePath.trim() || null,
+    mqtt_command_topic: withCommand ? (link.sameTopic ? topic : link.commandTopic.trim() || null) : null,
+  };
+}
 
 // Chemins des valeurs simples d'un message JSON (ex. "temperature", "data.ph")
 function jsonPaths(payload: string): string[] {
@@ -132,15 +154,28 @@ export function MqttLinkFields({
       </div>
 
       {showCommand && (
-        <div className="space-y-1.5">
-          <Label>Topic MQTT de commande <span className="text-muted-foreground font-normal">(optionnel)</span></Label>
-          <Input
-            className="font-mono text-xs"
-            placeholder="dakar-maison/salon/light/lampe-principale/set"
-            value={value.commandTopic}
-            onChange={e => set({ commandTopic: e.target.value })}
-          />
-          <p className="text-[11px] text-muted-foreground">Les commandes ON / OFF y sont publiées telles quelles.</p>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2">
+            <div>
+              <p className="text-sm font-medium">Même topic pour l'état et la commande</p>
+              <p className="text-[11px] text-muted-foreground">
+                L'interrupteur écrit ON / OFF sur ce topic et l'affichage le relit : les deux restent synchronisés.
+              </p>
+            </div>
+            <Switch checked={value.sameTopic} onCheckedChange={v => set({ sameTopic: v })} />
+          </div>
+          {!value.sameTopic && (
+            <div className="space-y-1.5">
+              <Label>Topic MQTT de commande</Label>
+              <Input
+                className="font-mono text-xs"
+                placeholder="dakar-maison/salon/light/lampe-principale/set"
+                value={value.commandTopic}
+                onChange={e => set({ commandTopic: e.target.value })}
+              />
+              <p className="text-[11px] text-muted-foreground">Les commandes ON / OFF y sont publiées telles quelles.</p>
+            </div>
+          )}
         </div>
       )}
     </div>

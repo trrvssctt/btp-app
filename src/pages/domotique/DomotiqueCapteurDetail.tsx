@@ -28,7 +28,7 @@ import {
 } from "recharts";
 import { domDeviceApi, domReadingApi, domCommandApi, domRuleApi, domBuildingApi } from "@/lib/api";
 import { toast } from "sonner";
-import { MqttLinkFields, emptyMqttLink, type MqttLink } from "@/components/domotique/MqttLinkFields";
+import { MqttLinkFields, emptyMqttLink, mqttLinkFromDevice, mqttPayload, type MqttLink } from "@/components/domotique/MqttLinkFields";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const DEVICE_TYPES = ["Température","Humidité","Présence","Accès porte","Lumière","Climatiseur","Prise intelligente","Compteur énergie"];
@@ -68,6 +68,13 @@ function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 }
 function fmt(n: number) { return Math.round(n).toLocaleString("fr-FR"); }
+function fmtClock(iso: string) {
+  return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+// État « allumé » à partir de la dernière valeur reçue (ON, 1, true, Fermé…)
+function stateIsOn(v: unknown) {
+  return /^(on|1|true|fermé|lock)$/i.test(String(v ?? "").trim());
+}
 
 // ── Composant principal ───────────────────────────────────────────────────────
 export default function DomotiqueCapteurDetail() {
@@ -134,7 +141,7 @@ export default function DomotiqueCapteurDetail() {
       setReadings(rdgs);
       setCommands(cmds);
       setBuildings(bldgs);
-      setIsOn(dev.last_value === "ON" || dev.last_value === "Fermé");
+      setIsOn(stateIsOn(dev.last_value));
       const relevant = allRules.filter((r: any) =>
         (r.conditions || []).some((c: any) => c.device_id === id) ||
         (r.actions    || []).some((a: any) => a.device_id === id)
@@ -152,6 +159,8 @@ export default function DomotiqueCapteurDetail() {
 
   // Équipement relié au broker : rafraîchissement automatique pour voir les mesures arriver
   const liveMqtt = Boolean(device?.mqtt_topic && device?.actif);
+  const mqttCommandable = Boolean(liveMqtt && device?.mqtt_command_topic && device?.category !== "sensor");
+  const sharedTopic = mqttCommandable && device?.mqtt_command_topic === device?.mqtt_topic;
   useEffect(() => {
     if (!id || !liveMqtt) return;
     const t = setInterval(async () => {
@@ -162,11 +171,11 @@ export default function DomotiqueCapteurDetail() {
         ]);
         setDevice(dev);
         setReadings(rdgs);
-        setIsOn(dev.last_value === "ON" || dev.last_value === "Fermé");
+        setIsOn(stateIsOn(dev.last_value));
       } catch { /* nouvel essai au prochain tour */ }
-    }, 5000);
+    }, mqttCommandable ? 2000 : 5000);
     return () => clearInterval(t);
-  }, [id, liveMqtt]);
+  }, [id, liveMqtt, mqttCommandable]);
 
   // ── Load tree when eBuilding changes (edit modal) ───────────────────────────
   useEffect(() => {
@@ -216,7 +225,7 @@ export default function DomotiqueCapteurDetail() {
     setECategory(device.category ?? "sensor");
     setEProtocol(device.protocol ?? PROTOCOLS[0]);
     setEUnit(device.unit ?? "");
-    setEMqtt({ topic: device.mqtt_topic ?? "", valuePath: device.mqtt_value_path ?? "", commandTopic: device.mqtt_command_topic ?? "" });
+    setEMqtt(mqttLinkFromDevice(device));
     setEBuilding(device.building_id ?? "");  // do NOT fallback to first building
     setEFloorId(""); setESpaceId(""); setERoomId("");
     setECascadeActive(false);               // don't let auto-build overwrite existing location
@@ -251,9 +260,7 @@ export default function DomotiqueCapteurDetail() {
         unit:        eUnit.trim() || null,
         location:    eLocation || null,
         building_id: eBuilding || null,
-        mqtt_topic:         eProtocol === "MQTT" ? eMqtt.topic.trim() : null,
-        mqtt_value_path:    eProtocol === "MQTT" ? eMqtt.valuePath.trim() || null : null,
-        mqtt_command_topic: eProtocol === "MQTT" && eCategory !== "sensor" ? eMqtt.commandTopic.trim() || null : null,
+        ...mqttPayload(eMqtt, eProtocol === "MQTT", eCategory !== "sensor"),
       };
       if (eWithEnergy) {
         payload.energy_profile = {
@@ -306,7 +313,9 @@ export default function DomotiqueCapteurDetail() {
         setDevice((d: any) => ({ ...d, last_value: cmd }));
         toast.success(`${device.name} → ${cmd}`);
       } else {
-        toast.error(device.mqtt_command_topic ? "Commande échouée — broker MQTT injoignable" : "Commande échouée — équipement hors ligne");
+        toast.error(device.mqtt_command_topic
+          ? "Commande refusée par le broker MQTT (droits d'écriture de btp-platform ?) ou broker injoignable"
+          : "Commande échouée — équipement hors ligne");
       }
     } catch {
       toast.error("Erreur lors de l'envoi");
@@ -323,6 +332,47 @@ export default function DomotiqueCapteurDetail() {
 
   const isActuator = device?.category === "actuator" || device?.category === "hybrid";
   const hasEnergy  = !!device?.nominal_power_watt;
+
+  // Historique des commandes (affiché sous l'interrupteur MQTT comme sous les boutons classiques)
+  const commandHistory = (
+    <div className="rounded-xl bg-card border border-border shadow-sm overflow-hidden">
+      <div className="p-4 border-b border-border flex items-center justify-between">
+        <h2 className="text-sm font-semibold">Historique des commandes</h2>
+        <span className="text-xs text-muted-foreground">{commands.length} commande(s)</span>
+      </div>
+      {commands.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-8">Aucune commande envoyée.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="text-center font-medium px-4 py-3">État</th>
+                <th className="text-left font-medium px-4 py-3">Commande</th>
+                <th className="text-left font-medium px-4 py-3">Envoyée</th>
+                <th className="text-left font-medium px-4 py-3">Par</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {commands.map((c: any) => (
+                <tr key={c.id} className="hover:bg-muted/30">
+                  <td className="px-4 py-2.5 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      {cmdStatusIcon(c.status)}
+                      <span className="text-xs">{c.status === "EXECUTED" ? "OK" : c.status === "FAILED" ? "Échec" : "En cours"}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5"><span className="font-mono text-xs bg-muted px-2 py-0.5 rounded">{c.command}</span></td>
+                  <td className="px-4 py-2.5 text-xs text-muted-foreground">{fmtDatetime(c.sent_at)}</td>
+                  <td className="px-4 py-2.5 text-xs">{c.sent_by_name || "Système"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
 
   if (loading) return (
     <div className="flex items-center justify-center h-64 text-muted-foreground gap-2">
@@ -512,6 +562,50 @@ export default function DomotiqueCapteurDetail() {
               <PowerOff className="w-8 h-8 mx-auto mb-2 opacity-30" />
               Cet équipement est désactivé. Activez-le d'abord pour envoyer des commandes.
             </div>
+          ) : mqttCommandable ? (
+            <>
+              {/* Actionneur MQTT : l'interrupteur publie, l'état est relu sur le topic */}
+              <div className="rounded-xl bg-card border border-border shadow-sm p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-semibold">État & commande</h2>
+                  <span className="flex items-center gap-1 text-xs text-success">
+                    <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" /> Direct
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-6">
+                  <div className={`w-16 h-16 rounded-xl flex items-center justify-center ${isOn ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                    {deviceIcon(device.type)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground mb-0.5">État lu sur le topic</p>
+                    <p className={`text-3xl font-bold font-mono ${isOn ? "text-primary" : "text-muted-foreground"}`}>
+                      {device.last_value ?? "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {device.last_seen_at ? `Mis à jour à ${fmtClock(device.last_seen_at)}` : "Aucun état reçu"}
+                    </p>
+                  </div>
+                  <div className="ml-auto flex items-center gap-3 rounded-xl border border-border px-4 py-3">
+                    <span className={`text-sm font-medium ${isOn ? "text-muted-foreground" : "text-foreground"}`}>OFF</span>
+                    {sending
+                      ? <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                      : <Switch checked={isOn} onCheckedChange={v => executeCommand(v ? "ON" : "OFF")} />}
+                    <span className={`text-sm font-medium ${isOn ? "text-primary" : "text-muted-foreground"}`}>ON</span>
+                  </div>
+                </div>
+                <div className="mt-4 pt-3 border-t border-border grid gap-1 text-xs text-muted-foreground">
+                  {sharedTopic ? (
+                    <p>Écriture et lecture sur <span className="font-mono text-foreground">{device.mqtt_topic}</span></p>
+                  ) : (
+                    <>
+                      <p>Commande publiée sur <span className="font-mono text-foreground">{device.mqtt_command_topic}</span></p>
+                      <p>État lu sur <span className="font-mono text-foreground">{device.mqtt_topic}</span></p>
+                    </>
+                  )}
+                </div>
+              </div>
+              {commandHistory}
+            </>
           ) : (
             <>
               <div className="rounded-xl bg-card border border-border shadow-sm p-5">
@@ -549,43 +643,7 @@ export default function DomotiqueCapteurDetail() {
                 )}
               </div>
 
-              <div className="rounded-xl bg-card border border-border shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-border flex items-center justify-between">
-                  <h2 className="text-sm font-semibold">Historique des commandes</h2>
-                  <span className="text-xs text-muted-foreground">{commands.length} commande(s)</span>
-                </div>
-                {commands.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-8">Aucune commande envoyée.</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
-                        <tr>
-                          <th className="text-center font-medium px-4 py-3">État</th>
-                          <th className="text-left font-medium px-4 py-3">Commande</th>
-                          <th className="text-left font-medium px-4 py-3">Envoyée</th>
-                          <th className="text-left font-medium px-4 py-3">Par</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {commands.map((c: any) => (
-                          <tr key={c.id} className="hover:bg-muted/30">
-                            <td className="px-4 py-2.5 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                {cmdStatusIcon(c.status)}
-                                <span className="text-xs">{c.status === "EXECUTED" ? "OK" : c.status === "FAILED" ? "Échec" : "En cours"}</span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-2.5"><span className="font-mono text-xs bg-muted px-2 py-0.5 rounded">{c.command}</span></td>
-                            <td className="px-4 py-2.5 text-xs text-muted-foreground">{fmtDatetime(c.sent_at)}</td>
-                            <td className="px-4 py-2.5 text-xs">{c.sent_by_name || "Système"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+              {commandHistory}
             </>
           )}
         </div>

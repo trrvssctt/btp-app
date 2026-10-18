@@ -14,7 +14,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Plus, Search, Wifi, WifiOff, AlertCircle, Zap, Loader2, MapPin } from "lucide-react";
 import { domDeviceApi, domBuildingApi } from "@/lib/api";
-import { MqttLinkFields, MqttStatusBadge, emptyMqttLink, type MqttLink } from "@/components/domotique/MqttLinkFields";
+import { MqttLinkFields, MqttStatusBadge, emptyMqttLink, mqttPayload, type MqttLink } from "@/components/domotique/MqttLinkFields";
 import { toast } from "sonner";
 
 const DEVICE_TYPES = ["Température","Humidité","Présence","Accès porte","Lumière","Climatiseur","Prise intelligente","Compteur énergie"];
@@ -145,11 +145,7 @@ export default function DomotiqueCapteurs() {
         room_id: fRoomId || null,
         unit: fUnit.trim() || null,
       };
-      if (fProtocol === "MQTT") {
-        payload.mqtt_topic = fMqtt.topic.trim();
-        payload.mqtt_value_path = fMqtt.valuePath.trim() || null;
-        payload.mqtt_command_topic = fCategory !== "sensor" ? fMqtt.commandTopic.trim() || null : null;
-      }
+      if (fProtocol === "MQTT") Object.assign(payload, mqttPayload(fMqtt, true, fCategory !== "sensor"));
       if (withEnergy && fPower) {
         payload.energy_profile = { nominal_power_watt: Number(fPower), kwh_price: Number(fKwh), can_be_auto_cut: fCategory !== "sensor", priority: "normal" };
       }

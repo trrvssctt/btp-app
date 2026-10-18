@@ -31,7 +31,7 @@ exports.send = [validate(commandSchema), asyncHandler(async (req, res) => {
       reason:    req.body.reason,
       sent_by:   req.user?.id ?? null,
     });
-    const ok = await mqttService.publishCommand(device.mqtt_command_topic, req.body.command, req.body.payload);
+    const ok = await mqttService.publishCommand(device, req.body.command, req.body.payload);
     cmd = await cm.updateStatus(pending.id, ok ? 'EXECUTED' : 'FAILED', ok ? new Date().toISOString() : null);
   } else {
     cmd = await cm.createWithHistory({

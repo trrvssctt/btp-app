@@ -36,5 +36,6 @@ module.exports = {
     url: process.env.MQTT_URL,
     username: process.env.MQTT_USERNAME || process.env.Username_homeassistant,
     password: process.env.MQTT_PASSWORD || process.env.Pass_homeassistant,
+    protocolVersion: Number(process.env.MQTT_PROTOCOL_VERSION) || 5,
   },
 };
