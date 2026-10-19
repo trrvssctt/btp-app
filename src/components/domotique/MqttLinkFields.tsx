@@ -57,6 +57,7 @@ export function MqttLinkFields({
   value, onChange, showCommand,
 }: { value: MqttLink; onChange: (v: MqttLink) => void; showCommand: boolean }) {
   const [topics, setTopics]       = useState<MqttTopicSample[] | null>(null);
+  const [listOpen, setListOpen]   = useState(false);
   const [scanning, setScanning]   = useState(false);
   const [topicFilter, setTopicFilter] = useState("");
   const [samplePayload, setSamplePayload] = useState("");
@@ -72,6 +73,7 @@ export function MqttLinkFields({
     setScanning(true);
     try {
       setTopics(await domMqttApi.discover({ seconds: 5 }));
+      setListOpen(true);
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message || "Broker MQTT injoignable");
     } finally {
@@ -98,14 +100,23 @@ export function MqttLinkFields({
             Explorer
           </Button>
         </div>
-        <p className="text-[11px] text-muted-foreground">Les jokers <span className="font-mono">+</span> et <span className="font-mono">#</span> sont acceptés.</p>
+        {samplePayload && !listOpen ? (
+          <p className="text-[11px] text-muted-foreground truncate">
+            Dernier message : <span className="font-mono">{samplePayload}</span>
+          </p>
+        ) : (
+          <p className="text-[11px] text-muted-foreground">Les jokers <span className="font-mono">+</span> et <span className="font-mono">#</span> sont acceptés.</p>
+        )}
       </div>
 
-      {topics && (
+      {topics && listOpen && (
         <div className="rounded-md border border-border overflow-hidden">
           <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border bg-muted/40">
             <span className="text-xs text-muted-foreground shrink-0">{topics.length} topic(s) actif(s) sur le broker</span>
-            <Input className="h-7 text-xs max-w-[180px]" placeholder="Filtrer…" value={topicFilter} onChange={e => setTopicFilter(e.target.value)} />
+            <div className="flex items-center gap-1">
+              <Input className="h-7 text-xs max-w-[180px]" placeholder="Filtrer…" value={topicFilter} onChange={e => setTopicFilter(e.target.value)} />
+              <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setListOpen(false)}>Fermer</Button>
+            </div>
           </div>
           <div className="max-h-48 overflow-y-auto divide-y divide-border">
             {visibleTopics.length === 0 ? (
@@ -114,7 +125,7 @@ export function MqttLinkFields({
               <button
                 key={t.topic}
                 type="button"
-                onClick={() => { set({ topic: t.topic, valuePath: "" }); setSamplePayload(t.payload); }}
+                onClick={() => { set({ topic: t.topic, valuePath: "" }); setSamplePayload(t.payload); setListOpen(false); setTopicFilter(""); }}
                 className={`block w-full min-w-0 overflow-hidden text-left px-3 py-2 hover:bg-muted/50 transition-colors ${value.topic === t.topic ? "bg-primary/10" : ""}`}
               >
                 <p className="font-mono text-xs truncate flex items-center gap-1.5">
